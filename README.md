@@ -6,15 +6,18 @@ A clean, responsive, beginner-friendly MERN-stack web application designed for u
 
 ## 👥 Team Responsibilities
 
-- **Nishka Shah — Module 1 (Active)**
+- **Nishka Shah — Module 1**
   - Repository Setup & Architecture
   - Trip Creation, Viewing, Editing, and Deletion
   - Curated Destination Exploration
   - Day-wise Itinerary Planning
-- **Heer Shah — Module 2 (Future Work)**
-  - Participant Management
-  - Expense Splitting
-  - Budget Summaries
+  - Automated Testing for Trip and Itinerary Features
+- **Heer Shah — Module 2**
+  - Participant Management and Trip Invitations
+  - Expense Creation, Editing, and Deletion
+  - Expense Splitting and Settlement Calculations
+  - Budget Summaries and Expense Reports
+  - Automated Testing for Participant and Expense Features
 
 ---
 
