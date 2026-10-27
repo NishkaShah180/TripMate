@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middlewares/errorHandler.js';
+import tripRoutes from './routes/tripRoutes.js';
 
 const app = express();
 
@@ -25,6 +26,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Trip routes
+app.use('/api/trips', tripRoutes);
 
 // 404 handler for unknown routes
 app.use((req, res, next) => {
