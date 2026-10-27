@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Compass, MapPin, PlusCircle, LayoutDashboard, Menu, X } from 'lucide-react';
+import {
+  Compass,
+  MapPin,
+  PlusCircle,
+  LayoutDashboard,
+  KeyRound,
+  Menu,
+  X,
+} from 'lucide-react';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,14 +38,14 @@ export default function Navbar() {
             </div>
             <div>
               <span className="text-xl font-bold tracking-tight text-slate-900">TripMate</span>
-              <span className="hidden sm:inline-block ml-2 text-xs font-medium text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-200">
-                Module 1
+              <span className="hidden sm:inline-block ml-2 text-xs font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-200">
+                Module 1 & 2 (Part 1)
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1.5">
             <NavLink to="/" end className={navLinkClass}>
               <LayoutDashboard className="w-4 h-4" />
               <span>Dashboard</span>
@@ -46,9 +54,13 @@ export default function Navbar() {
               <MapPin className="w-4 h-4" />
               <span>Explore Destinations</span>
             </NavLink>
+            <NavLink to="/join" className={navLinkClass}>
+              <KeyRound className="w-4 h-4 text-brand-600" />
+              <span>Join Trip</span>
+            </NavLink>
             <NavLink
               to="/trips/new"
-              className="ml-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 transition shadow-sm"
+              className="ml-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-brand-600 text-white hover:bg-brand-700 transition shadow-sm"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Create Trip</span>
@@ -90,9 +102,17 @@ export default function Navbar() {
             <span>Explore Destinations</span>
           </NavLink>
           <NavLink
+            to="/join"
+            onClick={() => setMobileMenuOpen(false)}
+            className={mobileNavLinkClass}
+          >
+            <KeyRound className="w-5 h-5 text-brand-600" />
+            <span>Join Trip</span>
+          </NavLink>
+          <NavLink
             to="/trips/new"
             onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-base font-medium bg-brand-600 text-white hover:bg-brand-700 transition mt-2"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-base font-semibold bg-brand-600 text-white hover:bg-brand-700 transition mt-2"
           >
             <PlusCircle className="w-5 h-5" />
             <span>Create Trip</span>

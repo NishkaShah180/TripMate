@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  User,
+  Mail,
 } from 'lucide-react';
 
 export default function CreateTripPage() {
@@ -22,6 +24,8 @@ export default function CreateTripPage() {
     startDate: '',
     endDate: '',
     description: '',
+    organizerName: '',
+    organizerEmail: '',
   });
 
   // UI state
@@ -92,14 +96,20 @@ export default function CreateTripPage() {
         startDate: formData.startDate,
         endDate: formData.endDate,
         description: formData.description.trim(),
+        organizerName: formData.organizerName.trim(),
+        organizerEmail: formData.organizerEmail.trim(),
       });
 
       setSuccessInfo(response.trip || { name: formData.name });
 
-      // Automatically navigate to dashboard after brief feedback
+      // Automatically navigate to trip details after brief feedback
       setTimeout(() => {
-        navigate('/');
-      }, 1500);
+        if (response.trip?._id) {
+          navigate(`/trips/${response.trip._id}`);
+        } else {
+          navigate('/');
+        }
+      }, 1200);
     } catch (err) {
       setApiError(err.message || 'Failed to create trip. Please try again.');
     } finally {
@@ -124,7 +134,7 @@ export default function CreateTripPage() {
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Create a New Trip</h1>
         <p className="text-sm text-slate-600 mt-1">
-          Enter your travel details below to begin planning your journey.
+          Enter your travel details below to begin organizing your trip and inviting participants.
         </p>
       </div>
 
@@ -136,15 +146,15 @@ export default function CreateTripPage() {
             <div>
               <p className="font-semibold text-sm">Trip "{successInfo.name}" created successfully!</p>
               <p className="text-xs text-emerald-700 mt-0.5">
-                Redirecting to dashboard, or click the button to return now.
+                Opening trip workspace to invite friends...
               </p>
             </div>
           </div>
           <Link
-            to="/"
+            to={successInfo._id ? `/trips/${successInfo._id}` : '/'}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
           >
-            Dashboard
+            Open Trip
           </Link>
         </div>
       )}
@@ -163,138 +173,194 @@ export default function CreateTripPage() {
       {/* Form Card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
-          {/* Trip Name */}
+          {/* Section: Trip Basics */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-slate-800 mb-1.5">
-              Trip Name <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Compass className="w-4 h-4" />
-              </div>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                disabled={isSubmitting || !!successInfo}
-                placeholder="e.g., Goa Getaway with Friends"
-                className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
-                  fieldErrors.name
-                    ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
-                    : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
-                }`}
-              />
-            </div>
-            {fieldErrors.name && (
-              <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>{fieldErrors.name}</span>
-              </p>
-            )}
-          </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
+              Trip Details
+            </h2>
 
-          {/* Destination */}
-          <div>
-            <label htmlFor="destination" className="block text-sm font-medium text-slate-800 mb-1.5">
-              Destination <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <MapPin className="w-4 h-4" />
-              </div>
-              <input
-                type="text"
-                id="destination"
-                name="destination"
-                value={formData.destination}
-                onChange={handleChange}
-                disabled={isSubmitting || !!successInfo}
-                placeholder="e.g., Goa, India"
-                className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
-                  fieldErrors.destination
-                    ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
-                    : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
-                }`}
-              />
-            </div>
-            {fieldErrors.destination && (
-              <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>{fieldErrors.destination}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Dates Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* Start Date */}
-            <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-slate-800 mb-1.5">
-                Start Date <span className="text-red-500">*</span>
+            {/* Trip Name */}
+            <div className="mb-4">
+              <label htmlFor="name" className="block text-sm font-medium text-slate-800 mb-1.5">
+                Trip Name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Calendar className="w-4 h-4" />
+                  <Compass className="w-4 h-4" />
                 </div>
                 <input
-                  type="date"
-                  id="startDate"
-                  name="startDate"
-                  value={formData.startDate}
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
                   onChange={handleChange}
                   disabled={isSubmitting || !!successInfo}
+                  placeholder="e.g., Goa Getaway with Friends"
                   className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
-                    fieldErrors.startDate
+                    fieldErrors.name
                       ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
                       : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
                   }`}
                 />
               </div>
-              {fieldErrors.startDate && (
+              {fieldErrors.name && (
                 <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" />
-                  <span>{fieldErrors.startDate}</span>
+                  <span>{fieldErrors.name}</span>
                 </p>
               )}
             </div>
 
-            {/* End Date */}
-            <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-slate-800 mb-1.5">
-                End Date <span className="text-red-500">*</span>
+            {/* Destination */}
+            <div className="mb-4">
+              <label htmlFor="destination" className="block text-sm font-medium text-slate-800 mb-1.5">
+                Destination <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Calendar className="w-4 h-4" />
+                  <MapPin className="w-4 h-4" />
                 </div>
                 <input
-                  type="date"
-                  id="endDate"
-                  name="endDate"
-                  value={formData.endDate}
-                  min={formData.startDate || undefined}
+                  type="text"
+                  id="destination"
+                  name="destination"
+                  value={formData.destination}
                   onChange={handleChange}
                   disabled={isSubmitting || !!successInfo}
+                  placeholder="e.g., Goa, India"
                   className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
-                    fieldErrors.endDate
+                    fieldErrors.destination
                       ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
                       : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
                   }`}
                 />
               </div>
-              {fieldErrors.endDate && (
+              {fieldErrors.destination && (
                 <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" />
-                  <span>{fieldErrors.endDate}</span>
+                  <span>{fieldErrors.destination}</span>
                 </p>
               )}
+            </div>
+
+            {/* Dates Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4">
+              <div>
+                <label htmlFor="startDate" className="block text-sm font-medium text-slate-800 mb-1.5">
+                  Start Date <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="date"
+                    id="startDate"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleChange}
+                    disabled={isSubmitting || !!successInfo}
+                    className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                      fieldErrors.startDate
+                        ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                        : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                    }`}
+                  />
+                </div>
+                {fieldErrors.startDate && (
+                  <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{fieldErrors.startDate}</span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="endDate" className="block text-sm font-medium text-slate-800 mb-1.5">
+                  End Date <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="date"
+                    id="endDate"
+                    name="endDate"
+                    value={formData.endDate}
+                    min={formData.startDate || undefined}
+                    onChange={handleChange}
+                    disabled={isSubmitting || !!successInfo}
+                    className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                      fieldErrors.endDate
+                        ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                        : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                    }`}
+                  />
+                </div>
+                {fieldErrors.endDate && (
+                  <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{fieldErrors.endDate}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Organizer Details (Module 2 - Heer Shah) */}
+          <div className="pt-2 border-t border-slate-100">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
+              Organizer Details (Module 2)
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4">
+              <div>
+                <label htmlFor="organizerName" className="block text-sm font-medium text-slate-800 mb-1.5">
+                  Your Name (Organizer) <span className="text-xs text-slate-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    id="organizerName"
+                    name="organizerName"
+                    value={formData.organizerName}
+                    onChange={handleChange}
+                    disabled={isSubmitting || !!successInfo}
+                    placeholder="e.g., Heer Shah"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="organizerEmail" className="block text-sm font-medium text-slate-800 mb-1.5">
+                  Organizer Email <span className="text-xs text-slate-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    id="organizerEmail"
+                    name="organizerEmail"
+                    value={formData.organizerEmail}
+                    onChange={handleChange}
+                    disabled={isSubmitting || !!successInfo}
+                    placeholder="e.g., heer@example.com"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Description */}
-          <div>
+          <div className="pt-2 border-t border-slate-100">
             <label htmlFor="description" className="block text-sm font-medium text-slate-800 mb-1.5">
               Description <span className="text-xs text-slate-400 font-normal">(optional)</span>
             </label>

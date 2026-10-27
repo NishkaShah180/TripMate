@@ -1,23 +1,24 @@
 # TripMate 🌍
 
-A clean, responsive, beginner-friendly MERN-stack web application designed for university semester evaluation that helps users plan and organize trips in one place.
+A clean, responsive, beginner-friendly MERN-stack web application designed for university semester evaluation that helps users plan trips, manage travel participants, and invite companions in one place.
 
 ---
 
-## 👥 Team Responsibilities
+## 👥 Team Responsibilities & Progress
 
 - **Nishka Shah — Module 1**
-  - Repository Setup & Architecture
-  - Trip Creation, Viewing, Editing, and Deletion
-  - Curated Destination Exploration
-  - Day-wise Itinerary Planning
-  - Automated Testing for Trip and Itinerary Features
-- **Heer Shah — Module 2**
-  - Participant Management and Trip Invitations
-  - Expense Creation, Editing, and Deletion
-  - Expense Splitting and Settlement Calculations
-  - Budget Summaries and Expense Reports
-  - Automated Testing for Participant and Expense Features
+  - Repository Setup & Architecture ✅
+  - Trip Creation, Viewing, Editing, and Deletion ✅
+  - Curated Destination Exploration ✅
+  - Day-wise Itinerary Planning (Foundational Routes) ✅
+  - Automated Testing for Trip Features (`npm --prefix server run test:trip`) ✅
+
+- **Heer Shah — Module 2 (Part 1: Participant Management & Trip Invitations)**
+  - Participant Directory with Role (Organizer / Member) & Status (Confirmed / Invited) ✅
+  - Add & Remove Participants with Persistence in MongoDB ✅
+  - Unique 6-character Trip Invite Codes & 1-Click Copy ✅
+  - Shareable Join Links & Direct Join Flow (`/join/:code`) ✅
+  - Automated Testing for Participant & Invitation Features (`npm --prefix server run test:participant`) ✅
 
 ---
 
@@ -38,20 +39,24 @@ TripMate/
 ├── client/                      # React frontend (Vite + Tailwind CSS)
 │   ├── src/
 │   │   ├── components/          # Reusable UI components (Navbar, etc.)
-│   │   ├── pages/               # Route pages (Dashboard, CreateTrip, etc.)
-│   │   ├── services/            # Native fetch API wrappers
-│   │   └── App.jsx
+│   │   ├── pages/               # Route pages (Dashboard, CreateTrip, TripDetails, JoinTrip, etc.)
+│   │   ├── services/            # Native fetch API wrappers (tripService)
+│   │   ├── App.jsx
+│   │   └── main.jsx
 │   ├── package.json
 │   └── vite.config.js
 ├── server/                      # Express backend & MongoDB
 │   ├── src/
 │   │   ├── config/              # MongoDB connection
-│   │   ├── controllers/         # Request handlers
+│   │   ├── controllers/         # Request handlers (tripController)
 │   │   ├── middlewares/         # Centralized error handler
-│   │   ├── models/              # Mongoose schemas (Trip)
-│   │   ├── routes/              # Express API routes
+│   │   ├── models/              # Mongoose schemas (Trip with Participant subdocument)
+│   │   ├── routes/              # Express API routes (tripRoutes)
 │   │   ├── app.js               # Express application configuration
 │   │   └── server.js            # HTTP server entrypoint
+│   ├── test-connection.js       # Database connectivity verification test
+│   ├── test-trip-creation.js    # Trip creation API verification test (Module 1)
+│   ├── test-participants-invitations.js # Participant & Invitation verification test (Module 2)
 │   ├── .env.example             # Configuration template
 │   └── package.json
 ├── .gitignore
@@ -99,13 +104,16 @@ npm run dev
 
 ## 🧪 Testing
 
-Run backend tests:
+Run backend automated verification suites:
 ```powershell
-# Test MongoDB connection & server health
+# 1. Test MongoDB connection & server health
 npm --prefix server run test:conn
 
-# Test Trip Creation API & MongoDB persistence
+# 2. Test Trip Creation API & MongoDB persistence (Module 1)
 npm --prefix server run test:trip
+
+# 3. Test Participant Management & Trip Invitations (Module 2 - Heer Shah)
+npm --prefix server run test:participant
 ```
 
 Build frontend for production:
@@ -115,9 +123,25 @@ npm run build:client
 
 ---
 
-## 📡 API Endpoints (Current Implementation)
+## 📡 API Endpoints
 
+### 🩺 Health & Diagnostic
 | Method | Endpoint | Description | Status |
 |---|---|---|---|
-| `GET` | `/api/health` | Server health check | Active |
-| `POST` | `/api/trips` | Create a new trip with validation | Active |
+| `GET` | `/api/health` | Server health & timestamp check | Active |
+
+### ✈️ Trips Workspace
+| Method | Endpoint | Description | Status |
+|---|---|---|---|
+| `GET` | `/api/trips` | Get all trips with participant count | Active |
+| `POST` | `/api/trips` | Create a new trip with validation & initial organizer | Active |
+| `GET` | `/api/trips/:id` | Get single trip details with participants | Active |
+| `GET` | `/api/trips/invite/:inviteCode` | Fetch public preview of trip by invite code | Active |
+| `POST` | `/api/trips/join` | Join a trip using an invite code | Active |
+
+### 👥 Participant Management & Invitations (Module 2 — Heer Shah)
+| Method | Endpoint | Description | Status |
+|---|---|---|---|
+| `POST` | `/api/trips/:id/participants` | Add a participant (organizer/member) to a trip | Active |
+| `DELETE` | `/api/trips/:id/participants/:participantId` | Remove a participant from a trip | Active |
+| `POST` | `/api/trips/:id/invite` | Generate invitation code and record invited participant | Active |
