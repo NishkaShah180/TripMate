@@ -3,6 +3,7 @@ import {
   createTrip,
   getAllTrips,
   getTripById,
+  updateTrip,
   addParticipant,
   removeParticipant,
   inviteParticipant,
@@ -20,6 +21,7 @@ router.get('/invite/:inviteCode', getTripByInviteCode);
 router.get('/', getAllTrips);
 router.post('/', createTrip);
 router.get('/:id', getTripById);
+router.put('/:id', updateTrip);
 
 // Participant management routes
 router.post('/:id/participants', addParticipant);

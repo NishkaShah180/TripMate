@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   getTripById,
+  updateTrip,
   addParticipant,
   removeParticipant,
   inviteParticipant,
@@ -22,6 +23,9 @@ import {
   X,
   Loader2,
   User,
+  Edit3,
+  Compass,
+  FileText,
 } from 'lucide-react';
 
 export default function TripDetailsPage() {
@@ -40,6 +44,19 @@ export default function TripDetailsPage() {
   const [operationError, setOperationError] = useState('');
   const [operationSuccess, setOperationSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit Trip modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    destination: '',
+    startDate: '',
+    endDate: '',
+    description: '',
+  });
+  const [editFieldErrors, setEditFieldErrors] = useState({});
+  const [editError, setEditError] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   // Form state
   const [participantForm, setParticipantForm] = useState({
@@ -87,6 +104,94 @@ export default function TripDetailsPage() {
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  // Date conversion helper for HTML date input
+  const toDateInputValue = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().split('T')[0];
+  };
+
+  // Open Edit Modal with prefilled data
+  const handleOpenEditModal = () => {
+    if (!trip) return;
+    setEditForm({
+      name: trip.name || '',
+      destination: trip.destination || '',
+      startDate: toDateInputValue(trip.startDate),
+      endDate: toDateInputValue(trip.endDate),
+      description: trip.description || '',
+    });
+    setEditFieldErrors({});
+    setEditError('');
+    setShowEditModal(true);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (editFieldErrors[name]) {
+      setEditFieldErrors((prev) => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
+    if (editError) setEditError('');
+  };
+
+  const validateEditForm = () => {
+    const errors = {};
+    if (!editForm.name.trim()) {
+      errors.name = 'Trip name is required';
+    }
+    if (!editForm.destination.trim()) {
+      errors.destination = 'Destination is required';
+    }
+    if (!editForm.startDate) {
+      errors.startDate = 'Start date is required';
+    }
+    if (!editForm.endDate) {
+      errors.endDate = 'End date is required';
+    } else if (editForm.startDate && editForm.endDate < editForm.startDate) {
+      errors.endDate = 'End date cannot be earlier than start date';
+    }
+
+    setEditFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleUpdateTrip = async (e) => {
+    e.preventDefault();
+    setEditError('');
+
+    if (!validateEditForm()) {
+      return;
+    }
+
+    setEditSubmitting(true);
+    try {
+      const res = await updateTrip(tripId, {
+        name: editForm.name.trim(),
+        destination: editForm.destination.trim(),
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+        description: editForm.description.trim(),
+      });
+      setTrip(res.trip);
+      setShowEditModal(false);
+      setOperationSuccess('Trip details updated successfully.');
+      setTimeout(() => setOperationSuccess(''), 3000);
+    } catch (err) {
+      setEditError(err.message || 'Failed to update trip details.');
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
   // Participant actions
@@ -235,9 +340,20 @@ export default function TripDetailsPage() {
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              {trip.name}
-            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                {trip.name}
+              </h1>
+              <button
+                type="button"
+                onClick={handleOpenEditModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition hover:text-brand-600 hover:border-brand-300"
+                title="Edit trip details"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                <span>Edit Trip</span>
+              </button>
+            </div>
 
             {trip.description && (
               <p className="text-sm text-slate-600 mt-2 max-w-2xl">{trip.description}</p>
@@ -596,6 +712,209 @@ export default function TripDetailsPage() {
                 <span>Remove</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Trip Details */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 sm:p-8 shadow-xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setShowEditModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-3">
+              <Edit3 className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Edit Trip Details</h3>
+            <p className="text-xs text-slate-500 mt-0.5 mb-5">
+              Update travel destination, dates, or trip notes. Participants and invite codes remain unaffected.
+            </p>
+
+            {editError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-800 text-xs flex items-center gap-2 border border-red-200">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateTrip} noValidate className="space-y-4">
+              {/* Trip Name */}
+              <div>
+                <label htmlFor="edit-trip-name" className="block text-xs font-medium text-slate-700 mb-1">
+                  Trip Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Compass className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    id="edit-trip-name"
+                    name="name"
+                    value={editForm.name}
+                    onChange={handleEditChange}
+                    disabled={editSubmitting}
+                    placeholder="e.g. Goa Getaway with Friends"
+                    className={`w-full pl-10 pr-3.5 py-2 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                      editFieldErrors.name
+                        ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                        : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                    }`}
+                  />
+                </div>
+                {editFieldErrors.name && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{editFieldErrors.name}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Destination */}
+              <div>
+                <label htmlFor="edit-destination" className="block text-xs font-medium text-slate-700 mb-1">
+                  Destination <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    id="edit-destination"
+                    name="destination"
+                    value={editForm.destination}
+                    onChange={handleEditChange}
+                    disabled={editSubmitting}
+                    placeholder="e.g. Goa, India"
+                    className={`w-full pl-10 pr-3.5 py-2 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                      editFieldErrors.destination
+                        ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                        : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                    }`}
+                  />
+                </div>
+                {editFieldErrors.destination && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{editFieldErrors.destination}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-startDate" className="block text-xs font-medium text-slate-700 mb-1">
+                    Start Date <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="date"
+                      id="edit-startDate"
+                      name="startDate"
+                      value={editForm.startDate}
+                      onChange={handleEditChange}
+                      disabled={editSubmitting}
+                      className={`w-full pl-10 pr-3.5 py-2 rounded-xl border text-sm text-slate-900 focus:outline-none transition ${
+                        editFieldErrors.startDate
+                          ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                          : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                      }`}
+                    />
+                  </div>
+                  {editFieldErrors.startDate && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{editFieldErrors.startDate}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="edit-endDate" className="block text-xs font-medium text-slate-700 mb-1">
+                    End Date <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="date"
+                      id="edit-endDate"
+                      name="endDate"
+                      value={editForm.endDate}
+                      min={editForm.startDate || undefined}
+                      onChange={handleEditChange}
+                      disabled={editSubmitting}
+                      className={`w-full pl-10 pr-3.5 py-2 rounded-xl border text-sm text-slate-900 focus:outline-none transition ${
+                        editFieldErrors.endDate
+                          ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                          : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                      }`}
+                    />
+                  </div>
+                  {editFieldErrors.endDate && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{editFieldErrors.endDate}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="edit-description" className="block text-xs font-medium text-slate-700 mb-1">
+                  Description <span className="text-xs text-slate-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute top-2.5 left-3.5 pointer-events-none text-slate-400">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <textarea
+                    id="edit-description"
+                    name="description"
+                    rows={3}
+                    value={editForm.description}
+                    onChange={handleEditChange}
+                    disabled={editSubmitting}
+                    placeholder="Add notes, travel goals, or details about this trip..."
+                    className="w-full pl-10 pr-3.5 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={editSubmitting}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition shadow-sm disabled:opacity-60"
+                >
+                  {editSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

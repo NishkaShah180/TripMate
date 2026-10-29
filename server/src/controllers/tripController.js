@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Trip, { generateInviteCode } from '../models/Trip.js';
 
 /**
@@ -163,6 +164,120 @@ export const getTripById = async (req, res, next) => {
   } catch (error) {
     if (error.name === 'CastError') {
       return res.status(404).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update an existing trip
+ * @route   PUT /api/trips/:id
+ * @access  Public
+ */
+export const updateTrip = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Validate MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const { name, destination, startDate, endDate, description } = req.body;
+
+    // Validate required fields
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trip name is required',
+      });
+    }
+
+    if (!destination || !destination.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Destination is required',
+      });
+    }
+
+    if (!startDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date is required',
+      });
+    }
+
+    if (!endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'End date is required',
+      });
+    }
+
+    const parsedStart = new Date(startDate);
+    const parsedEnd = new Date(endDate);
+
+    if (isNaN(parsedStart.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid start date format',
+      });
+    }
+
+    if (isNaN(parsedEnd.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid end date format',
+      });
+    }
+
+    if (parsedEnd < parsedStart) {
+      return res.status(400).json({
+        success: false,
+        message: 'End date cannot be earlier than start date',
+      });
+    }
+
+    // Update only permitted fields to preserve participants and inviteCode
+    trip.name = name.trim();
+    trip.destination = destination.trim();
+    trip.startDate = parsedStart;
+    trip.endDate = parsedEnd;
+    if (description !== undefined) {
+      trip.description = description ? description.trim() : '';
+    }
+
+    await trip.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Trip updated successfully',
+      trip,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+      });
+    }
+    if (error.name === 'CastError') {
+      return res.status(400).json({
         success: false,
         message: 'Invalid trip ID format',
       });

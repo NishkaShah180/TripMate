@@ -9,7 +9,8 @@
     "dev": "nodemon src/server.js",
     "test:conn": "node test-connection.js",
     "test:trip": "node test-trip-creation.js",
-    "test:participant": "node test-participants-invitations.js"
+    "test:participant": "node test-participants-invitations.js",
+    "test:trip-edit": "node test-trip-editing.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

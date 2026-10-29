@@ -114,6 +114,9 @@ npm --prefix server run test:trip
 
 # 3. Test Participant Management & Trip Invitations (Module 2 - Heer Shah)
 npm --prefix server run test:participant
+
+# 4. Test Trip Editing API & Validation (Module 1)
+npm --prefix server run test:trip-edit
 ```
 
 Build frontend for production:
@@ -136,6 +139,7 @@ npm run build:client
 | `GET` | `/api/trips` | Get all trips with participant count | Active |
 | `POST` | `/api/trips` | Create a new trip with validation & initial organizer | Active |
 | `GET` | `/api/trips/:id` | Get single trip details with participants | Active |
+| `PUT` | `/api/trips/:id` | Update trip metadata (name, destination, dates, description) | Active |
 | `GET` | `/api/trips/invite/:inviteCode` | Fetch public preview of trip by invite code | Active |
 | `POST` | `/api/trips/join` | Join a trip using an invite code | Active |
 

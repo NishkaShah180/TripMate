@@ -49,6 +49,20 @@ export async function createTrip(tripData) {
 }
 
 /**
+ * Update an existing trip's details
+ * @param {string} id - Trip ID
+ * @param {Object} tripData - { name, destination, startDate, endDate, description }
+ */
+export async function updateTrip(id, tripData) {
+  const response = await fetch(`${API_BASE_URL}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(tripData),
+  });
+  return handleResponse(response);
+}
+
+/**
  * Add a participant to a trip
  * @param {string} tripId
  * @param {Object} participantData - { name, email, role }
