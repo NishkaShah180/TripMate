@@ -49,8 +49,8 @@ export async function createTrip(tripData) {
 }
 
 /**
- * Update an existing trip's details
- * @param {string} id - Trip ID
+ * Update an existing trip (Module 1 - Nishka Shah)
+ * @param {string} id
  * @param {Object} tripData - { name, destination, startDate, endDate, description }
  */
 export async function updateTrip(id, tripData) {
@@ -63,9 +63,18 @@ export async function updateTrip(id, tripData) {
 }
 
 /**
- * Add a participant to a trip
+ * Get all participants for a trip
  * @param {string} tripId
- * @param {Object} participantData - { name, email, role }
+ */
+export async function getTripParticipants(tripId) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/participants`);
+  return handleResponse(response);
+}
+
+/**
+ * Add a participant to a trip (Module 2 - Heer Shah)
+ * @param {string} tripId
+ * @param {Object} participantData - { name, email, role, status }
  */
 export async function addParticipant(tripId, participantData) {
   const response = await fetch(`${API_BASE_URL}/${tripId}/participants`, {
@@ -77,7 +86,22 @@ export async function addParticipant(tripId, participantData) {
 }
 
 /**
- * Remove a participant from a trip
+ * Update a participant's role or details (Module 2 - Heer Shah)
+ * @param {string} tripId
+ * @param {string} participantId
+ * @param {Object} updateData - { role, name, email }
+ */
+export async function updateParticipant(tripId, participantId, updateData) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/participants/${participantId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updateData),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Remove a participant from a trip (Module 2 - Heer Shah)
  */
 export async function removeParticipant(tripId, participantId) {
   const response = await fetch(`${API_BASE_URL}/${tripId}/participants/${participantId}`, {

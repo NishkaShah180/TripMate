@@ -11,14 +11,20 @@ A clean, responsive, beginner-friendly MERN-stack web application designed for u
   - Trip Creation, Viewing, Editing, and Deletion ✅
   - Curated Destination Exploration ✅
   - Day-wise Itinerary Planning (Foundational Routes) ✅
-  - Automated Testing for Trip Features (`npm --prefix server run test:trip`) ✅
+  - Automated Testing for Trip Creation & Editing (`npm --prefix server run test:trip`, `npm --prefix server run test:trip-edit`) ✅
 
-- **Heer Shah — Module 2 (Part 1: Participant Management & Trip Invitations)**
-  - Participant Directory with Role (Organizer / Member) & Status (Confirmed / Invited) ✅
-  - Add & Remove Participants with Persistence in MongoDB ✅
-  - Unique 6-character Trip Invite Codes & 1-Click Copy ✅
-  - Shareable Join Links & Direct Join Flow (`/join/:code`) ✅
-  - Automated Testing for Participant & Invitation Features (`npm --prefix server run test:participant`) ✅
+- **Heer Shah — Module 2**
+  - **Part 1: Participant Management & Trip Invitations** ✅
+    - Unique 6-character Trip Invite Codes & 1-Click Copy
+    - Shareable Join Links & Direct Join Flow (`/join/:code`)
+    - Automated Testing for Invitations (`npm --prefix server run test:participant`)
+  - **Part 2: Add & Remove Participants with Persistence in MongoDB** ✅
+    - Participant Directory with Roles (Organizer / Member) & Status (Confirmed / Invited)
+    - Add Participants directly with validation (duplicate detection, email format validation, required fields)
+    - Remove Participants with MongoDB persistence (`trip.participants.pull`) and sole-organizer integrity checks
+    - Update/Toggle Participant Roles (Organizer <-> Member) with database persistence
+    - Query Participants directly (`GET /api/trips/:id/participants`) with role breakdowns
+    - Automated Testing for Participant Persistence (`npm --prefix server run test:participant-persistence`)
 
 ---
 
@@ -39,6 +45,7 @@ TripMate/
 ├── client/                      # React frontend (Vite + Tailwind CSS)
 │   ├── src/
 │   │   ├── components/          # Reusable UI components (Navbar, etc.)
+│   │   ├── data/                # Static catalogs (destinations.js)
 │   │   ├── pages/               # Route pages (Dashboard, CreateTrip, TripDetails, JoinTrip, etc.)
 │   │   ├── services/            # Native fetch API wrappers (tripService)
 │   │   ├── App.jsx
@@ -55,8 +62,10 @@ TripMate/
 │   │   ├── app.js               # Express application configuration
 │   │   └── server.js            # HTTP server entrypoint
 │   ├── test-connection.js       # Database connectivity verification test
-│   ├── test-trip-creation.js    # Trip creation API verification test (Module 1)
-│   ├── test-participants-invitations.js # Participant & Invitation verification test (Module 2)
+│   ├── test-trip-creation.js    # Trip creation API verification test (Module 1 - Part 1)
+│   ├── test-trip-editing.js     # Trip editing API verification test (Module 1 - Part 2)
+│   ├── test-participants-invitations.js # Participant & Invitation verification test (Module 2 - Part 1)
+│   ├── test-participant-persistence.js  # Add & Remove Participant Persistence verification test (Module 2 - Part 2)
 │   ├── .env.example             # Configuration template
 │   └── package.json
 ├── .gitignore
@@ -109,14 +118,17 @@ Run backend automated verification suites:
 # 1. Test MongoDB connection & server health
 npm --prefix server run test:conn
 
-# 2. Test Trip Creation API & MongoDB persistence (Module 1)
+# 2. Test Trip Creation API & MongoDB persistence (Module 1 - Part 1)
 npm --prefix server run test:trip
 
-# 3. Test Participant Management & Trip Invitations (Module 2 - Heer Shah)
+# 3. Test Trip Editing API & Validation (Module 1 - Part 2)
+npm --prefix server run test:trip-edit
+
+# 4. Test Participant Management & Trip Invitations (Module 2 - Part 1 - Heer Shah)
 npm --prefix server run test:participant
 
-# 4. Test Trip Editing API & Validation (Module 1)
-npm --prefix server run test:trip-edit
+# 5. Test Add & Remove Participants with Persistence in MongoDB (Module 2 - Part 2 - Heer Shah)
+npm --prefix server run test:participant-persistence
 ```
 
 Build frontend for production:
@@ -133,7 +145,7 @@ npm run build:client
 |---|---|---|---|
 | `GET` | `/api/health` | Server health & timestamp check | Active |
 
-### ✈️ Trips Workspace
+### ✈️ Trips Workspace (Module 1 — Nishka Shah)
 | Method | Endpoint | Description | Status |
 |---|---|---|---|
 | `GET` | `/api/trips` | Get all trips with participant count | Active |
@@ -143,9 +155,11 @@ npm run build:client
 | `GET` | `/api/trips/invite/:inviteCode` | Fetch public preview of trip by invite code | Active |
 | `POST` | `/api/trips/join` | Join a trip using an invite code | Active |
 
-### 👥 Participant Management & Invitations (Module 2 — Heer Shah)
+### 👥 Participant Management & Persistence (Module 2 — Heer Shah)
 | Method | Endpoint | Description | Status |
 |---|---|---|---|
-| `POST` | `/api/trips/:id/participants` | Add a participant (organizer/member) to a trip | Active |
-| `DELETE` | `/api/trips/:id/participants/:participantId` | Remove a participant from a trip | Active |
+| `GET` | `/api/trips/:id/participants` | Retrieve all participants and role breakdown counts | Active |
+| `POST` | `/api/trips/:id/participants` | Add a participant with duplicate validation & MongoDB persistence | Active |
+| `PUT` | `/api/trips/:id/participants/:participantId` | Update participant role (Organizer/Member) with persistence | Active |
+| `DELETE` | `/api/trips/:id/participants/:participantId` | Remove participant from MongoDB subdocuments with integrity checks | Active |
 | `POST` | `/api/trips/:id/invite` | Generate invitation code and record invited participant | Active |

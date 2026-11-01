@@ -142,6 +142,15 @@ export const getAllTrips = async (req, res, next) => {
 export const getTripById = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    // Validate MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
     const trip = await Trip.findById(id);
 
     if (!trip) {
@@ -163,7 +172,7 @@ export const getTripById = async (req, res, next) => {
     });
   } catch (error) {
     if (error.name === 'CastError') {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: 'Invalid trip ID format',
       });
@@ -287,19 +296,18 @@ export const updateTrip = async (req, res, next) => {
 };
 
 /**
- * @desc    Add a participant to a trip
- * @route   POST /api/trips/:id/participants
+ * @desc    Get all participants for a specific trip
+ * @route   GET /api/trips/:id/participants
  * @access  Public
  */
-export const addParticipant = async (req, res, next) => {
+export const getTripParticipants = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, email, role, status } = req.body;
 
-    if (!name || !name.trim()) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: 'Participant name is required',
+        message: 'Invalid trip ID format',
       });
     }
 
@@ -311,8 +319,68 @@ export const addParticipant = async (req, res, next) => {
       });
     }
 
+    const participants = trip.participants || [];
+    const organizerCount = participants.filter((p) => p.role === 'organizer').length;
+    const memberCount = participants.filter((p) => p.role === 'member').length;
+
+    return res.status(200).json({
+      success: true,
+      count: participants.length,
+      organizerCount,
+      memberCount,
+      participants,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Add a participant to a trip with MongoDB persistence
+ * @route   POST /api/trips/:id/participants
+ * @access  Public
+ */
+export const addParticipant = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const { name, email, role, status } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Participant name is required',
+      });
+    }
+
     const trimmedName = name.trim();
     const cleanEmail = email ? email.trim().toLowerCase() : '';
+
+    // Validate email format if provided
+    if (cleanEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid email format',
+        });
+      }
+    }
 
     // Check for duplicate participant name or email
     const duplicate = trip.participants.find(
@@ -322,17 +390,23 @@ export const addParticipant = async (req, res, next) => {
     );
 
     if (duplicate) {
+      const field = duplicate.name.toLowerCase() === trimmedName.toLowerCase()
+        ? `"${trimmedName}"`
+        : `email "${cleanEmail}"`;
       return res.status(400).json({
         success: false,
-        message: `Participant "${trimmedName}" is already in this trip`,
+        message: `Participant with ${field} is already in this trip`,
       });
     }
+
+    const validatedRole = role && ['organizer', 'member'].includes(role) ? role : 'member';
+    const validatedStatus = status && ['confirmed', 'invited'].includes(status) ? status : 'confirmed';
 
     const newParticipant = {
       name: trimmedName,
       email: cleanEmail,
-      role: role && ['organizer', 'member'].includes(role) ? role : 'member',
-      status: status && ['confirmed', 'invited'].includes(status) ? status : 'confirmed',
+      role: validatedRole,
+      status: validatedStatus,
       joinedAt: new Date(),
     };
 
@@ -348,18 +422,149 @@ export const addParticipant = async (req, res, next) => {
       trip,
     });
   } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+      });
+    }
     next(error);
   }
 };
 
 /**
- * @desc    Remove a participant from a trip
+ * @desc    Update a participant's role or details
+ * @route   PUT /api/trips/:id/participants/:participantId
+ * @access  Public
+ */
+export const updateParticipant = async (req, res, next) => {
+  try {
+    const { id, participantId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(participantId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid participant ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const participant = trip.participants.id(participantId);
+    if (!participant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Participant not found in this trip',
+      });
+    }
+
+    const { role, name, email, status } = req.body;
+
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Participant name cannot be empty',
+        });
+      }
+      participant.name = name.trim();
+    }
+
+    if (email !== undefined) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (cleanEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(cleanEmail)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid email format',
+          });
+        }
+      }
+      participant.email = cleanEmail;
+    }
+
+    if (role !== undefined) {
+      if (!['organizer', 'member'].includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Role must be either organizer or member',
+        });
+      }
+      // If demoting from organizer to member, verify at least one other organizer remains
+      if (participant.role === 'organizer' && role === 'member') {
+        const remainingOrganizers = trip.participants.filter(
+          (p) => p.role === 'organizer' && p._id.toString() !== participantId
+        );
+        if (remainingOrganizers.length === 0 && trip.participants.length > 1) {
+          return res.status(400).json({
+            success: false,
+            message: 'Cannot demote the only organizer. Please assign another organizer first.',
+          });
+        }
+      }
+      participant.role = role;
+    }
+
+    if (status !== undefined) {
+      if (!['confirmed', 'invited'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Status must be either confirmed or invited',
+        });
+      }
+      participant.status = status;
+    }
+
+    await trip.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Participant updated successfully',
+      participant,
+      trip,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Remove a participant from a trip with MongoDB persistence
  * @route   DELETE /api/trips/:id/participants/:participantId
  * @access  Public
  */
 export const removeParticipant = async (req, res, next) => {
   try {
     const { id, participantId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(participantId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid participant ID format',
+      });
+    }
 
     const trip = await Trip.findById(id);
     if (!trip) {
@@ -377,12 +582,27 @@ export const removeParticipant = async (req, res, next) => {
       });
     }
 
+    // Check if trying to remove the only organizer when other participants exist
+    if (participantExists.role === 'organizer' && trip.participants.length > 1) {
+      const remainingOrganizers = trip.participants.filter(
+        (p) => p.role === 'organizer' && p._id.toString() !== participantId
+      );
+      if (remainingOrganizers.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot remove the only organizer. Please assign another organizer first.',
+        });
+      }
+    }
+
+    const removedName = participantExists.name;
     trip.participants.pull(participantId);
     await trip.save();
 
     return res.status(200).json({
       success: true,
-      message: `Participant "${participantExists.name}" removed successfully`,
+      message: `Participant "${removedName}" removed successfully`,
+      removedParticipantId: participantId,
       trip,
     });
   } catch (error) {
@@ -398,6 +618,14 @@ export const removeParticipant = async (req, res, next) => {
 export const inviteParticipant = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
     const { email, name, role } = req.body;
 
     const trip = await Trip.findById(id);

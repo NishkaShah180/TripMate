@@ -4,6 +4,7 @@ import {
   getTripById,
   updateTrip,
   addParticipant,
+  updateParticipant,
   removeParticipant,
   inviteParticipant,
 } from '../services/tripService';
@@ -26,6 +27,9 @@ import {
   Edit3,
   Compass,
   FileText,
+  Search,
+  ShieldCheck,
+  UserCheck,
 } from 'lucide-react';
 
 export default function TripDetailsPage() {
@@ -44,6 +48,10 @@ export default function TripDetailsPage() {
   const [operationError, setOperationError] = useState('');
   const [operationSuccess, setOperationSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Participant search and role filter state
+  const [participantSearch, setParticipantSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all'); // 'all' | 'organizer' | 'member'
 
   // Edit Trip modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -220,6 +228,20 @@ export default function TripDetailsPage() {
     }
   };
 
+  const handleToggleRole = async (participant) => {
+    const newRole = participant.role === 'organizer' ? 'member' : 'organizer';
+    setOperationError('');
+    try {
+      const res = await updateParticipant(tripId, participant._id, { role: newRole });
+      setTrip(res.trip);
+      setOperationSuccess(`Changed ${participant.name}'s role to ${newRole}.`);
+      setTimeout(() => setOperationSuccess(''), 3000);
+    } catch (err) {
+      setOperationError(err.message || 'Failed to update participant role');
+      setTimeout(() => setOperationError(''), 4000);
+    }
+  };
+
   const handleInviteByEmail = async (e) => {
     e.preventDefault();
     setOperationError('');
@@ -270,6 +292,19 @@ export default function TripDetailsPage() {
     });
   };
 
+  const participants = trip?.participants || [];
+  const organizerCount = participants.filter((p) => p.role === 'organizer').length;
+  const memberCount = participants.filter((p) => p.role === 'member').length;
+
+  const filteredParticipants = participants.filter((p) => {
+    const matchesRole = roleFilter === 'all' || p.role === roleFilter;
+    const matchesSearch =
+      !participantSearch.trim() ||
+      p.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
+      (p.email && p.email.toLowerCase().includes(participantSearch.toLowerCase()));
+    return matchesRole && matchesSearch;
+  });
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
@@ -319,6 +354,14 @@ export default function TripDetailsPage() {
         </div>
       )}
 
+      {/* Operation Error Toast */}
+      {operationError && (
+        <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 flex items-center gap-2 shadow-sm animate-fadeIn">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          <span className="text-sm font-medium">{operationError}</span>
+        </div>
+      )}
+
       {/* Trip Hero Header */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -336,7 +379,7 @@ export default function TripDetailsPage() {
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
                 <Users className="w-3.5 h-3.5" />
-                <span>{trip.participants?.length || 0} participants</span>
+                <span>{participants.length} {participants.length === 1 ? 'participant' : 'participants'}</span>
               </span>
             </div>
 
@@ -479,14 +522,20 @@ export default function TripDetailsPage() {
           </div>
         </div>
 
-        {/* Right Column: Participants List */}
+        {/* Right Column: Participants List & Persistence Management */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+            {/* Header with Title and Add Button */}
+            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Trip Participants</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-900">Trip Participants</h3>
+                  <span className="text-xs bg-brand-50 text-brand-700 border border-brand-200 px-2.5 py-0.5 rounded-full font-semibold">
+                    {participants.length}
+                  </span>
+                </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Manage the confirmed travelers and invited friends for this trip.
+                  {organizerCount} {organizerCount === 1 ? 'organizer' : 'organizers'} &bull; {memberCount} {memberCount === 1 ? 'member' : 'members'} persisted in MongoDB
                 </p>
               </div>
               <button
@@ -494,14 +543,65 @@ export default function TripDetailsPage() {
                   setOperationError('');
                   setShowAddParticipantModal(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition shadow-sm"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition shadow-sm"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Add Participant</span>
               </button>
             </div>
 
-            {trip.participants?.length === 0 ? (
+            {/* Controls: Search and Role Filter */}
+            {participants.length > 0 && (
+              <div className="px-6 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search participants by name or email..."
+                    value={participantSearch}
+                    onChange={(e) => setParticipantSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-500"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setRoleFilter('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                      roleFilter === 'all'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    All ({participants.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleFilter('organizer')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                      roleFilter === 'organizer'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Organizers ({organizerCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleFilter('member')}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                      roleFilter === 'member'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Members ({memberCount})
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {participants.length === 0 ? (
               <div className="p-12 text-center text-slate-400">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
                 <p className="text-sm font-semibold text-slate-700">No participants yet</p>
@@ -516,9 +616,23 @@ export default function TripDetailsPage() {
                   <span>Add First Participant</span>
                 </button>
               </div>
+            ) : filteredParticipants.length === 0 ? (
+              <div className="p-8 text-center text-slate-400">
+                <Search className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                <p className="text-xs font-medium text-slate-600">No participants match your search criteria</p>
+                <button
+                  onClick={() => {
+                    setParticipantSearch('');
+                    setRoleFilter('all');
+                  }}
+                  className="mt-2 text-xs text-brand-600 hover:underline font-semibold"
+                >
+                  Clear filters
+                </button>
+              </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {trip.participants?.map((participant) => {
+                {filteredParticipants.map((participant) => {
                   const initials = participant.name
                     .split(' ')
                     .map((n) => n[0])
@@ -531,47 +645,61 @@ export default function TripDetailsPage() {
                       key={participant._id}
                       className="p-5 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition group"
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3.5 min-w-0">
                         <div className="w-11 h-11 rounded-2xl bg-brand-100 text-brand-700 font-bold flex items-center justify-center text-sm flex-shrink-0">
                           {initials}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-slate-900">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-slate-900 truncate">
                               {participant.name}
                             </span>
-                            <span
-                              className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+
+                            {/* Interactive Role Switcher Pill */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRole(participant)}
+                              title={`Click to switch to ${participant.role === 'organizer' ? 'member' : 'organizer'}`}
+                              className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full border transition hover:opacity-80 flex items-center gap-1 ${
                                 participant.role === 'organizer'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-slate-100 text-slate-600'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                               }`}
                             >
-                              {participant.role}
-                            </span>
+                              {participant.role === 'organizer' ? (
+                                <ShieldCheck className="w-3 h-3 text-amber-600" />
+                              ) : (
+                                <UserCheck className="w-3 h-3 text-slate-500" />
+                              )}
+                              <span>{participant.role}</span>
+                            </button>
+
                             {participant.status === 'invited' && (
-                              <span className="text-[10px] font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                              <span className="text-[10px] font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">
                                 Invited
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 mt-0.5">
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">
                             {participant.email || 'No email provided'} &bull; Joined{' '}
                             {formatDate(participant.joinedAt)}
                           </p>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          setOperationError('');
-                          setParticipantToDelete(participant);
-                        }}
-                        className="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition"
-                        title="Remove participant"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOperationError('');
+                            setParticipantToDelete(participant);
+                          }}
+                          className="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition"
+                          title="Remove participant"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -597,7 +725,7 @@ export default function TripDetailsPage() {
             </div>
             <h3 className="text-lg font-bold text-slate-900">Add Trip Participant</h3>
             <p className="text-xs text-slate-500 mt-0.5 mb-4">
-              Add a traveler directly into this trip's member directory.
+              Add a traveler directly into this trip's member directory with persistence in MongoDB.
             </p>
 
             {operationError && (
@@ -684,6 +812,13 @@ export default function TripDetailsPage() {
               Are you sure you want to remove <strong className="text-slate-800">"{participantToDelete.name}"</strong> from this trip?
             </p>
 
+            {participantToDelete.role === 'organizer' && organizerCount === 1 && participants.length > 1 && (
+              <div className="mt-3 p-3 rounded-lg bg-amber-50 text-amber-800 text-xs flex items-center gap-2 border border-amber-200">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                <span>This participant is the only organizer. You must assign another organizer before removing them.</span>
+              </div>
+            )}
+
             {operationError && (
               <div className="mt-3 p-3 rounded-lg bg-red-50 text-red-800 text-xs flex items-center gap-2 border border-red-200">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
@@ -706,7 +841,7 @@ export default function TripDetailsPage() {
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleRemoveParticipant}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm disabled:opacity-60"
               >
                 {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Remove</span>
@@ -716,7 +851,7 @@ export default function TripDetailsPage() {
         </div>
       )}
 
-      {/* Modal: Edit Trip Details */}
+      {/* Modal: Edit Trip Details (Module 1 - Nishka Shah) */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 sm:p-8 shadow-xl relative max-h-[90vh] overflow-y-auto">

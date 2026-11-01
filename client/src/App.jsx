@@ -29,7 +29,7 @@ export default function App() {
             TripMate &mdash; Student Semester Project &bull; DA-IICT Sem-3 Web Development
           </p>
           <p className="font-medium text-slate-600">
-            Module 1 by Nishka Shah &bull; Module 2 (Part 1) by Heer Shah
+            Module 1 by Nishka Shah &bull; Module 2 (Part 1 & 2) by Heer Shah
           </p>
         </div>
       </footer>
