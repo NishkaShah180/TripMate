@@ -129,6 +129,9 @@ npm --prefix server run test:participant
 
 # 5. Test Add & Remove Participants with Persistence in MongoDB (Module 2 - Part 2 - Heer Shah)
 npm --prefix server run test:participant-persistence
+
+# 6. Test Day-Wise Itinerary Management & Persistence (Module 1 - Part 3 - Nishka Shah)
+npm --prefix server run test:itinerary
 ```
 
 Build frontend for production:
@@ -154,6 +157,14 @@ npm run build:client
 | `PUT` | `/api/trips/:id` | Update trip metadata (name, destination, dates, description) | Active |
 | `GET` | `/api/trips/invite/:inviteCode` | Fetch public preview of trip by invite code | Active |
 | `POST` | `/api/trips/join` | Join a trip using an invite code | Active |
+
+### 📅 Day-Wise Itinerary Management (Module 1 — Nishka Shah)
+| Method | Endpoint | Description | Status |
+|---|---|---|---|
+| `GET` | `/api/trips/:id/itinerary` | Retrieve trip activities sorted chronologically | Active |
+| `POST` | `/api/trips/:id/itinerary` | Add an activity to a specific day with boundary checks | Active |
+| `PUT` | `/api/trips/:id/itinerary/:activityId` | Update an existing activity (title, date, time, location, notes) | Active |
+| `DELETE` | `/api/trips/:id/itinerary/:activityId` | Remove an activity from the itinerary with MongoDB persistence | Active |
 
 ### 👥 Participant Management & Persistence (Module 2 — Heer Shah)
 | Method | Endpoint | Description | Status |

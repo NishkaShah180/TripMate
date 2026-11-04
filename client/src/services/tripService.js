@@ -142,3 +142,59 @@ export async function getTripPreviewByCode(inviteCode) {
   const response = await fetch(`${API_BASE_URL}/invite/${encodeURIComponent(inviteCode)}`);
   return handleResponse(response);
 }
+
+/**
+ * ============================================================================
+ * Itinerary Management Services (Module 1 - Part 3 / Stage 4)
+ * ============================================================================
+ */
+
+/**
+ * Fetch all itinerary activities for a trip
+ * @param {string} tripId
+ */
+export async function getTripItinerary(tripId) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/itinerary`);
+  return handleResponse(response);
+}
+
+/**
+ * Add a new activity to a trip itinerary
+ * @param {string} tripId
+ * @param {Object} activityData - { title, date, startTime, location, notes }
+ */
+export async function addActivity(tripId, activityData) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/itinerary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(activityData),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Update an existing activity in a trip itinerary
+ * @param {string} tripId
+ * @param {string} activityId
+ * @param {Object} activityData - { title, date, startTime, location, notes }
+ */
+export async function updateActivity(tripId, activityId, activityData) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/itinerary/${activityId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(activityData),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Delete an activity from a trip itinerary
+ * @param {string} tripId
+ * @param {string} activityId
+ */
+export async function deleteActivity(tripId, activityId) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/itinerary/${activityId}`, {
+    method: 'DELETE',
+  });
+  return handleResponse(response);
+}

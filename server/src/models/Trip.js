@@ -28,6 +28,37 @@ const participantSchema = new mongoose.Schema({
   },
 });
 
+const activitySchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: [true, 'Activity title is required'],
+    trim: true,
+  },
+  date: {
+    type: Date,
+    required: [true, 'Activity date is required'],
+  },
+  startTime: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  location: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  notes: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 const tripSchema = new mongoose.Schema(
   {
     name: {
@@ -68,6 +99,7 @@ const tripSchema = new mongoose.Schema(
       uppercase: true,
     },
     participants: [participantSchema],
+    itinerary: [activitySchema],
   },
   {
     timestamps: true,

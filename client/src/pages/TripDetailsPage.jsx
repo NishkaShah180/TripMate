@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   getTripById,
@@ -7,6 +7,10 @@ import {
   updateParticipant,
   removeParticipant,
   inviteParticipant,
+  getTripItinerary,
+  addActivity,
+  updateActivity,
+  deleteActivity,
 } from '../services/tripService';
 import {
   ArrowLeft,
@@ -30,6 +34,8 @@ import {
   Search,
   ShieldCheck,
   UserCheck,
+  Clock,
+  CalendarDays,
 } from 'lucide-react';
 
 export default function TripDetailsPage() {
@@ -65,6 +71,22 @@ export default function TripDetailsPage() {
   const [editFieldErrors, setEditFieldErrors] = useState({});
   const [editError, setEditError] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Itinerary state (Module 1 - Part 3 / Stage 4)
+  const [selectedDay, setSelectedDay] = useState('all'); // 'all' or 'YYYY-MM-DD'
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null); // null when adding
+  const [activityForm, setActivityForm] = useState({
+    title: '',
+    date: '',
+    startTime: '',
+    location: '',
+    notes: '',
+  });
+  const [activityFieldErrors, setActivityFieldErrors] = useState({});
+  const [activityError, setActivityError] = useState('');
+  const [activitySubmitting, setActivitySubmitting] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState(null);
 
   // Form state
   const [participantForm, setParticipantForm] = useState({
@@ -199,6 +221,184 @@ export default function TripDetailsPage() {
       setEditError(err.message || 'Failed to update trip details.');
     } finally {
       setEditSubmitting(false);
+    }
+  };
+
+  // Itinerary helper: calculate all days between trip.startDate and trip.endDate
+  const tripDays = useMemo(() => {
+    if (!trip?.startDate || !trip?.endDate) return [];
+    const days = [];
+    const startStr = toDateInputValue(trip.startDate);
+    const endStr = toDateInputValue(trip.endDate);
+    if (!startStr || !endStr) return [];
+
+    const cur = new Date(startStr + 'T00:00:00');
+    const last = new Date(endStr + 'T00:00:00');
+    let dayNum = 1;
+
+    while (cur <= last && dayNum <= 365) {
+      const yyyy = cur.getFullYear();
+      const mm = String(cur.getMonth() + 1).padStart(2, '0');
+      const dd = String(cur.getDate()).padStart(2, '0');
+      const dateKey = `${yyyy}-${mm}-${dd}`;
+      const formatted = cur.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      days.push({
+        dayNumber: dayNum,
+        dateKey,
+        label: `Day ${dayNum}`,
+        displayDate: formatted,
+      });
+      cur.setDate(cur.getDate() + 1);
+      dayNum++;
+    }
+    return days;
+  }, [trip?.startDate, trip?.endDate]);
+
+  // Chronologically sorted activities
+  const sortedActivities = useMemo(() => {
+    const list = [...(trip?.itinerary || [])];
+    return list.sort((a, b) => {
+      const aDateStr = toDateInputValue(a.date);
+      const bDateStr = toDateInputValue(b.date);
+      if (aDateStr !== bDateStr) {
+        return aDateStr.localeCompare(bDateStr);
+      }
+      const aHasTime = Boolean(a.startTime && a.startTime.trim());
+      const bHasTime = Boolean(b.startTime && b.startTime.trim());
+      if (aHasTime && !bHasTime) return -1;
+      if (!aHasTime && bHasTime) return 1;
+      if (aHasTime && bHasTime) {
+        return a.startTime.trim().localeCompare(b.startTime.trim());
+      }
+      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+    });
+  }, [trip?.itinerary]);
+
+  // Filtered activities based on selected day ('all' or 'YYYY-MM-DD')
+  const displayedActivities = useMemo(() => {
+    if (selectedDay === 'all') return sortedActivities;
+    return sortedActivities.filter((act) => toDateInputValue(act.date) === selectedDay);
+  }, [sortedActivities, selectedDay]);
+
+  // Itinerary modal actions
+  const handleOpenAddActivityModal = (prefillDate = null) => {
+    const defaultDate = prefillDate || (selectedDay !== 'all' ? selectedDay : toDateInputValue(trip.startDate));
+    setEditingActivity(null);
+    setActivityForm({
+      title: '',
+      date: defaultDate || '',
+      startTime: '',
+      location: '',
+      notes: '',
+    });
+    setActivityFieldErrors({});
+    setActivityError('');
+    setShowActivityModal(true);
+  };
+
+  const handleOpenEditActivityModal = (activity) => {
+    setEditingActivity(activity);
+    setActivityForm({
+      title: activity.title || '',
+      date: toDateInputValue(activity.date),
+      startTime: activity.startTime || '',
+      location: activity.location || '',
+      notes: activity.notes || '',
+    });
+    setActivityFieldErrors({});
+    setActivityError('');
+    setShowActivityModal(true);
+  };
+
+  const handleActivityFormChange = (e) => {
+    const { name, value } = e.target;
+    setActivityForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (activityFieldErrors[name]) {
+      setActivityFieldErrors((prev) => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
+    if (activityError) setActivityError('');
+  };
+
+  const validateActivityForm = () => {
+    const errors = {};
+    if (!activityForm.title.trim()) {
+      errors.title = 'Activity title is required';
+    }
+    if (!activityForm.date) {
+      errors.date = 'Activity date is required';
+    } else {
+      const tripStartStr = toDateInputValue(trip.startDate);
+      const tripEndStr = toDateInputValue(trip.endDate);
+      if (activityForm.date < tripStartStr) {
+        errors.date = `Date cannot be earlier than trip start (${tripStartStr})`;
+      } else if (activityForm.date > tripEndStr) {
+        errors.date = `Date cannot be later than trip end (${tripEndStr})`;
+      }
+    }
+    setActivityFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveActivity = async (e) => {
+    e.preventDefault();
+    setActivityError('');
+
+    if (!validateActivityForm()) {
+      return;
+    }
+
+    setActivitySubmitting(true);
+    try {
+      if (editingActivity) {
+        const res = await updateActivity(tripId, editingActivity._id, {
+          title: activityForm.title.trim(),
+          date: activityForm.date,
+          startTime: activityForm.startTime.trim(),
+          location: activityForm.location.trim(),
+          notes: activityForm.notes.trim(),
+        });
+        setTrip(res.trip);
+        setOperationSuccess('Activity updated successfully.');
+      } else {
+        const res = await addActivity(tripId, {
+          title: activityForm.title.trim(),
+          date: activityForm.date,
+          startTime: activityForm.startTime.trim(),
+          location: activityForm.location.trim(),
+          notes: activityForm.notes.trim(),
+        });
+        setTrip(res.trip);
+        setOperationSuccess('Activity added to itinerary.');
+      }
+      setShowActivityModal(false);
+      setTimeout(() => setOperationSuccess(''), 3000);
+    } catch (err) {
+      setActivityError(err.message || 'Failed to save activity');
+    } finally {
+      setActivitySubmitting(false);
+    }
+  };
+
+  const handleDeleteActivity = async () => {
+    if (!activityToDelete) return;
+    setActivitySubmitting(true);
+    try {
+      const res = await deleteActivity(tripId, activityToDelete._id);
+      setTrip(res.trip);
+      setActivityToDelete(null);
+      setOperationSuccess('Activity deleted successfully.');
+      setTimeout(() => setOperationSuccess(''), 3000);
+    } catch (err) {
+      setOperationError(err.message || 'Failed to delete activity');
+    } finally {
+      setActivitySubmitting(false);
     }
   };
 
@@ -429,6 +629,208 @@ export default function TripDetailsPage() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Day-Wise Itinerary Section (Module 1 - Part 3 / Stage 4) */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900">Trip Itinerary</h2>
+              <span className="text-xs bg-brand-50 text-brand-700 border border-brand-200 px-2.5 py-0.5 rounded-full font-semibold">
+                {sortedActivities.length} {sortedActivities.length === 1 ? 'activity' : 'activities'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Plan and view daily activities across your trip duration ({tripDays.length} {tripDays.length === 1 ? 'day' : 'days'}).
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleOpenAddActivityModal()}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm transition"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Add Activity</span>
+          </button>
+        </div>
+
+        {/* Day Navigation Tabs */}
+        <div className="py-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 min-w-max">
+            <button
+              type="button"
+              onClick={() => setSelectedDay('all')}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
+                selectedDay === 'all'
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>All Days</span>
+              <span
+                className={`ml-1 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  selectedDay === 'all'
+                    ? 'bg-brand-700/60 text-white'
+                    : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                {sortedActivities.length}
+              </span>
+            </button>
+
+            {tripDays.map((day) => {
+              const countForDay = sortedActivities.filter(
+                (a) => toDateInputValue(a.date) === day.dateKey
+              ).length;
+              const isSelected = selectedDay === day.dateKey;
+
+              return (
+                <button
+                  key={day.dateKey}
+                  type="button"
+                  onClick={() => setSelectedDay(day.dateKey)}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
+                    isSelected
+                      ? 'bg-brand-600 text-white shadow-sm font-semibold'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+                  }`}
+                >
+                  <span>{day.label}</span>
+                  <span className={isSelected ? 'text-brand-100 text-[11px]' : 'text-slate-400 text-[11px]'}>
+                    &bull; {day.displayDate}
+                  </span>
+                  {countForDay > 0 && (
+                    <span
+                      className={`ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-brand-700/60 text-white'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {countForDay}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Activities List Area */}
+        <div className="pt-6">
+          {displayedActivities.length === 0 ? (
+            <div className="p-8 sm:p-12 text-center rounded-2xl bg-slate-50/70 border border-dashed border-slate-200">
+              <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto mb-3">
+                <CalendarDays className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">
+                {selectedDay === 'all'
+                  ? 'No activities planned yet'
+                  : `No activities planned for ${
+                      tripDays.find((d) => d.dateKey === selectedDay)?.label || 'this day'
+                    }`}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-4">
+                {selectedDay === 'all'
+                  ? 'Start organizing your trip itinerary by adding daily activities, places to visit, and schedules.'
+                  : 'Add sightseeing spots, tours, reservations, or travel plans for this day.'}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  handleOpenAddActivityModal(selectedDay !== 'all' ? selectedDay : null)
+                }
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm transition"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Add Activity</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {displayedActivities.map((activity) => {
+                const actDateStr = toDateInputValue(activity.date);
+                const matchingDay = tripDays.find((d) => d.dateKey === actDateStr);
+
+                return (
+                  <div
+                    key={activity._id}
+                    className="p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-brand-300 hover:shadow-sm transition bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                  >
+                    <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                      {/* Time / Clock Badge */}
+                      <div className="flex-shrink-0 w-16 sm:w-20 pt-0.5 text-center">
+                        {activity.startTime ? (
+                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 font-mono text-xs font-semibold">
+                            <Clock className="w-3 h-3 text-indigo-500 flex-shrink-0" />
+                            <span>{activity.startTime}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md inline-block">
+                            Anytime
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                            {activity.title}
+                          </h4>
+                          {selectedDay === 'all' && matchingDay && (
+                            <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                              {matchingDay.label} &bull; {matchingDay.displayDate}
+                            </span>
+                          )}
+                        </div>
+
+                        {activity.location && (
+                          <p className="text-xs text-slate-600 flex items-center gap-1 mb-1">
+                            <MapPin className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />
+                            <span className="truncate">{activity.location}</span>
+                          </p>
+                        )}
+
+                        {activity.notes && (
+                          <p className="text-xs text-slate-500 mt-1 whitespace-pre-line leading-relaxed">
+                            {activity.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions: Edit & Delete */}
+                    <div className="flex items-center gap-1.5 self-end sm:self-center border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditActivityModal(activity)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-slate-50 transition"
+                        title="Edit activity"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOperationError('');
+                          setActivityToDelete(activity);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                        title="Delete activity"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1050,6 +1452,225 @@ export default function TripDetailsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add or Edit Activity (Module 1 - Part 3 / Stage 4) */}
+      {showActivityModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 sm:p-8 shadow-xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setShowActivityModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-3">
+              <CalendarDays className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">
+              {editingActivity ? 'Edit Activity' : 'Add Activity to Itinerary'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5 mb-5">
+              {editingActivity
+                ? 'Update activity schedule, location, or notes.'
+                : 'Schedule a new activity, visit, or travel plan within your trip dates.'}
+            </p>
+
+            {activityError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-800 text-xs flex items-center gap-2 border border-red-200">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
+                <span>{activityError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveActivity} noValidate className="space-y-4">
+              {/* Activity Title */}
+              <div>
+                <label htmlFor="activity-title" className="block text-xs font-medium text-slate-700 mb-1">
+                  Activity Title <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Compass className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    id="activity-title"
+                    name="title"
+                    value={activityForm.title}
+                    onChange={handleActivityFormChange}
+                    disabled={activitySubmitting}
+                    placeholder="e.g. Scuba Diving at Calangute Beach"
+                    className={`w-full pl-10 pr-3.5 py-2 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                      activityFieldErrors.title
+                        ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                        : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                    }`}
+                  />
+                </div>
+                {activityFieldErrors.title && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{activityFieldErrors.title}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Date & Start Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="activity-date" className="block text-xs font-medium text-slate-700 mb-1">
+                    Date <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="date"
+                      id="activity-date"
+                      name="date"
+                      value={activityForm.date}
+                      min={toDateInputValue(trip.startDate)}
+                      max={toDateInputValue(trip.endDate)}
+                      onChange={handleActivityFormChange}
+                      disabled={activitySubmitting}
+                      className={`w-full pl-10 pr-3.5 py-2 rounded-xl border text-sm text-slate-900 focus:outline-none transition ${
+                        activityFieldErrors.date
+                          ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
+                          : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                      }`}
+                    />
+                  </div>
+                  {activityFieldErrors.date && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{activityFieldErrors.date}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="activity-time" className="block text-xs font-medium text-slate-700 mb-1">
+                    Start Time <span className="text-slate-400 font-normal">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="time"
+                      id="activity-time"
+                      name="startTime"
+                      value={activityForm.startTime}
+                      onChange={handleActivityFormChange}
+                      disabled={activitySubmitting}
+                      className="w-full pl-10 pr-3.5 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label htmlFor="activity-location" className="block text-xs font-medium text-slate-700 mb-1">
+                  Location <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    id="activity-location"
+                    name="location"
+                    value={activityForm.location}
+                    onChange={handleActivityFormChange}
+                    disabled={activitySubmitting}
+                    placeholder="e.g. Calangute, North Goa"
+                    className="w-full pl-10 pr-3.5 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label htmlFor="activity-notes" className="block text-xs font-medium text-slate-700 mb-1">
+                  Notes / Instructions <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute top-2.5 left-3.5 pointer-events-none text-slate-400">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <textarea
+                    id="activity-notes"
+                    name="notes"
+                    rows={3}
+                    value={activityForm.notes}
+                    onChange={handleActivityFormChange}
+                    disabled={activitySubmitting}
+                    placeholder="Add reminders, booking IDs, things to bring, or meeting points..."
+                    className="w-full pl-10 pr-3.5 py-2 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowActivityModal(false)}
+                  disabled={activitySubmitting}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={activitySubmitting}
+                  className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition shadow-sm disabled:opacity-60"
+                >
+                  {activitySubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{editingActivity ? 'Save Changes' : 'Add Activity'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Activity Confirmation */}
+      {activityToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-6 shadow-xl relative">
+            <h3 className="text-base font-bold text-slate-900">Delete Activity</h3>
+            <p className="text-xs text-slate-600 mt-2">
+              Are you sure you want to remove <strong className="text-slate-800">"{activityToDelete.title}"</strong> from your itinerary?
+            </p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setActivityToDelete(null)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={activitySubmitting}
+                onClick={handleDeleteActivity}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm disabled:opacity-60"
+              >
+                {activitySubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Delete</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -11,7 +11,8 @@
     "test:trip": "node test-trip-creation.js",
     "test:participant": "node test-participants-invitations.js",
     "test:participant-persistence": "node test-participant-persistence.js",
-    "test:trip-edit": "node test-trip-editing.js"
+    "test:trip-edit": "node test-trip-editing.js",
+    "test:itinerary": "node test-itinerary-persistence.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

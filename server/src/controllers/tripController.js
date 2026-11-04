@@ -2,6 +2,40 @@ import mongoose from 'mongoose';
 import Trip, { generateInviteCode } from '../models/Trip.js';
 
 /**
+ * Normalizes a Date or date string to a clean YYYY-MM-DD string for timezone-safe calendar comparison.
+ */
+export const toCalendarDateString = (d) => {
+  if (!d) return null;
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) {
+    return d.slice(0, 10);
+  }
+  const dateObj = new Date(d);
+  if (isNaN(dateObj.getTime())) return null;
+  return dateObj.toISOString().slice(0, 10);
+};
+
+/**
+ * Sorts activities chronologically: date ascending, then startTime ascending (untimed items last).
+ */
+export const sortActivitiesChronologically = (activities = []) => {
+  return [...activities].sort((a, b) => {
+    const aDateStr = toCalendarDateString(a.date) || '';
+    const bDateStr = toCalendarDateString(b.date) || '';
+    if (aDateStr !== bDateStr) {
+      return aDateStr.localeCompare(bDateStr);
+    }
+    const aHasTime = Boolean(a.startTime && a.startTime.trim());
+    const bHasTime = Boolean(b.startTime && b.startTime.trim());
+    if (aHasTime && !bHasTime) return -1;
+    if (!aHasTime && bHasTime) return 1;
+    if (aHasTime && bHasTime) {
+      return a.startTime.trim().localeCompare(b.startTime.trim());
+    }
+    return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+  });
+};
+
+/**
  * @desc    Create a new trip
  * @route   POST /api/trips
  * @access  Public
@@ -261,7 +295,24 @@ export const updateTrip = async (req, res, next) => {
       });
     }
 
-    // Update only permitted fields to preserve participants and inviteCode
+    // Safety check: ensure existing activities still fall within the updated trip dates
+    if (trip.itinerary && trip.itinerary.length > 0) {
+      const newStartStr = toCalendarDateString(parsedStart);
+      const newEndStr = toCalendarDateString(parsedEnd);
+      const outOfBounds = trip.itinerary.filter((act) => {
+        const actDateStr = toCalendarDateString(act.date);
+        return actDateStr < newStartStr || actDateStr > newEndStr;
+      });
+
+      if (outOfBounds.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot update trip dates: ${outOfBounds.length} existing ${outOfBounds.length === 1 ? 'activity falls' : 'activities fall'} outside the new date range. Please adjust or remove those activities first.`,
+        });
+      }
+    }
+
+    // Update only permitted fields to preserve participants, inviteCode, and itinerary
     trip.name = name.trim();
     trip.destination = destination.trim();
     trip.startDate = parsedStart;
@@ -782,6 +833,320 @@ export const getTripByInviteCode = async (req, res, next) => {
         participantCount: trip.participants.length,
         inviteCode: trip.inviteCode,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * ============================================================================
+ * ITINERARY MANAGEMENT CONTROLLERS (Module 1 - Part 3 / Stage 4)
+ * ============================================================================
+ */
+
+/**
+ * @desc    Get all activities in a trip itinerary (sorted chronologically)
+ * @route   GET /api/trips/:id/itinerary
+ * @access  Public
+ */
+export const getTripItinerary = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const sortedActivities = sortActivitiesChronologically(trip.itinerary || []);
+
+    return res.status(200).json({
+      success: true,
+      count: sortedActivities.length,
+      itinerary: sortedActivities,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Add a new activity to a trip's itinerary
+ * @route   POST /api/trips/:id/itinerary
+ * @access  Public
+ */
+export const addActivity = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const { title, date, startTime, location, notes } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Activity title is required',
+      });
+    }
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Activity date is required',
+      });
+    }
+
+    const actDateStr = toCalendarDateString(date);
+    if (!actDateStr) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid activity date format',
+      });
+    }
+
+    const tripStartStr = toCalendarDateString(trip.startDate);
+    const tripEndStr = toCalendarDateString(trip.endDate);
+
+    if (actDateStr < tripStartStr) {
+      return res.status(400).json({
+        success: false,
+        message: `Activity date cannot be earlier than trip start date (${tripStartStr})`,
+      });
+    }
+
+    if (actDateStr > tripEndStr) {
+      return res.status(400).json({
+        success: false,
+        message: `Activity date cannot be later than trip end date (${tripEndStr})`,
+      });
+    }
+
+    const newActivity = {
+      title: title.trim(),
+      date: new Date(actDateStr + 'T00:00:00.000Z'),
+      startTime: startTime ? startTime.trim() : '',
+      location: location ? location.trim() : '',
+      notes: notes ? notes.trim() : '',
+      createdAt: new Date(),
+    };
+
+    if (!trip.itinerary) {
+      trip.itinerary = [];
+    }
+
+    trip.itinerary.push(newActivity);
+    await trip.save();
+
+    const added = trip.itinerary[trip.itinerary.length - 1];
+
+    return res.status(201).json({
+      success: true,
+      message: 'Activity added successfully',
+      activity: added,
+      itinerary: sortActivitiesChronologically(trip.itinerary),
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+      });
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update an existing activity in a trip's itinerary
+ * @route   PUT /api/trips/:id/itinerary/:activityId
+ * @access  Public
+ */
+export const updateActivity = async (req, res, next) => {
+  try {
+    const { id, activityId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(activityId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid activity ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const activity = trip.itinerary.id(activityId);
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        message: 'Activity not found in this trip',
+      });
+    }
+
+    const { title, date, startTime, location, notes } = req.body;
+
+    if (title !== undefined) {
+      if (!title || !title.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Activity title cannot be empty',
+        });
+      }
+      activity.title = title.trim();
+    }
+
+    if (date !== undefined) {
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          message: 'Activity date is required',
+        });
+      }
+
+      const actDateStr = toCalendarDateString(date);
+      if (!actDateStr) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid activity date format',
+        });
+      }
+
+      const tripStartStr = toCalendarDateString(trip.startDate);
+      const tripEndStr = toCalendarDateString(trip.endDate);
+
+      if (actDateStr < tripStartStr) {
+        return res.status(400).json({
+          success: false,
+          message: `Activity date cannot be earlier than trip start date (${tripStartStr})`,
+        });
+      }
+
+      if (actDateStr > tripEndStr) {
+        return res.status(400).json({
+          success: false,
+          message: `Activity date cannot be later than trip end date (${tripEndStr})`,
+        });
+      }
+
+      activity.date = new Date(actDateStr + 'T00:00:00.000Z');
+    }
+
+    if (startTime !== undefined) {
+      activity.startTime = startTime ? startTime.trim() : '';
+    }
+
+    if (location !== undefined) {
+      activity.location = location ? location.trim() : '';
+    }
+
+    if (notes !== undefined) {
+      activity.notes = notes ? notes.trim() : '';
+    }
+
+    await trip.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Activity updated successfully',
+      activity,
+      itinerary: sortActivitiesChronologically(trip.itinerary),
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+      });
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Delete an activity from a trip's itinerary
+ * @route   DELETE /api/trips/:id/itinerary/:activityId
+ * @access  Public
+ */
+export const deleteActivity = async (req, res, next) => {
+  try {
+    const { id, activityId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(activityId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid activity ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const activity = trip.itinerary.id(activityId);
+    if (!activity) {
+      return res.status(404).json({
+        success: false,
+        message: 'Activity not found in this trip',
+      });
+    }
+
+    trip.itinerary.pull(activityId);
+    await trip.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Activity deleted successfully',
+      itinerary: sortActivitiesChronologically(trip.itinerary),
     });
   } catch (error) {
     next(error);

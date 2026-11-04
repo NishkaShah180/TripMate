@@ -11,6 +11,10 @@ import {
   inviteParticipant,
   joinTripByCode,
   getTripByInviteCode,
+  getTripItinerary,
+  addActivity,
+  updateActivity,
+  deleteActivity,
 } from '../controllers/tripController.js';
 
 const router = express.Router();
@@ -31,5 +35,11 @@ router.post('/:id/participants', addParticipant);
 router.put('/:id/participants/:participantId', updateParticipant);
 router.delete('/:id/participants/:participantId', removeParticipant);
 router.post('/:id/invite', inviteParticipant);
+
+// Itinerary management routes (Module 1 - Part 3 / Stage 4)
+router.get('/:id/itinerary', getTripItinerary);
+router.post('/:id/itinerary', addActivity);
+router.put('/:id/itinerary/:activityId', updateActivity);
+router.delete('/:id/itinerary/:activityId', deleteActivity);
 
 export default router;
