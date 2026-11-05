@@ -98,6 +98,10 @@ const tripSchema = new mongoose.Schema(
       trim: true,
       uppercase: true,
     },
+    isDemo: {
+      type: Boolean,
+      default: false,
+    },
     participants: [participantSchema],
     itinerary: [activitySchema],
   },

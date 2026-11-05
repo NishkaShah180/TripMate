@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { createTrip } from '../services/tripService';
 import {
   Compass,
@@ -16,17 +16,35 @@ import {
 
 export default function CreateTripPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefilledDestination = searchParams.get('destination') || '';
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    destination: '',
-    startDate: '',
-    endDate: '',
-    description: '',
-    organizerName: '',
-    organizerEmail: '',
+  // Form state - prefill destination (and suggested trip name) if present in URL query params
+  const [formData, setFormData] = useState(() => {
+    const dest = prefilledDestination.trim();
+    return {
+      name: dest ? `${dest} Adventure` : '',
+      destination: dest,
+      startDate: '',
+      endDate: '',
+      description: '',
+      organizerName: '',
+      organizerEmail: '',
+    };
   });
+
+  // Sync if query parameter changes dynamically
+  useEffect(() => {
+    const destParam = searchParams.get('destination');
+    if (destParam && destParam.trim()) {
+      const dest = destParam.trim();
+      setFormData((prev) => ({
+        ...prev,
+        destination: prev.destination ? prev.destination : dest,
+        name: prev.name ? prev.name : `${dest} Adventure`,
+      }));
+    }
+  }, [searchParams]);
 
   // UI state
   const [fieldErrors, setFieldErrors] = useState({});
@@ -123,7 +141,7 @@ export default function CreateTripPage() {
       <div className="mb-6">
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Dashboard</span>
@@ -132,20 +150,20 @@ export default function CreateTripPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Create a New Trip</h1>
-        <p className="text-sm text-slate-600 mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Create a New Trip</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           Enter your travel details below to begin organizing your trip and inviting participants.
         </p>
       </div>
 
       {/* Success banner */}
       {successInfo && (
-        <div className="mb-6 p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 flex items-start justify-between gap-3 shadow-sm">
+        <div className="mb-6 p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 flex items-start justify-between gap-3 shadow-sm">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-semibold text-sm">Trip "{successInfo.name}" created successfully!</p>
-              <p className="text-xs text-emerald-700 mt-0.5">
+              <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
                 Opening trip workspace to invite friends...
               </p>
             </div>
@@ -161,27 +179,27 @@ export default function CreateTripPage() {
 
       {/* API Error banner */}
       {apiError && (
-        <div className="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 flex items-start gap-3 shadow-sm">
-          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+        <div className="mb-6 p-4 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-900 dark:text-red-200 flex items-start gap-3 shadow-sm">
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-semibold text-sm">Unable to create trip</p>
-            <p className="text-xs text-red-700 mt-0.5">{apiError}</p>
+            <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">{apiError}</p>
           </div>
         </div>
       )}
 
       {/* Form Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 transition-colors duration-200">
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
           {/* Section: Trip Basics */}
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-4">
               Trip Details
             </h2>
 
             {/* Trip Name */}
             <div className="mb-4">
-              <label htmlFor="name" className="block text-sm font-medium text-slate-800 mb-1.5">
+              <label htmlFor="name" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1.5">
                 Trip Name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -196,15 +214,15 @@ export default function CreateTripPage() {
                   onChange={handleChange}
                   disabled={isSubmitting || !!successInfo}
                   placeholder="e.g., Goa Getaway with Friends"
-                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 bg-white dark:bg-slate-900 focus:outline-none transition ${
                     fieldErrors.name
-                      ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
-                      : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                      ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-950/40 bg-red-50/20 dark:bg-red-950/20'
+                      : 'border-slate-300 dark:border-slate-600 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50'
                   }`}
                 />
               </div>
               {fieldErrors.name && (
-                <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" />
                   <span>{fieldErrors.name}</span>
                 </p>
@@ -213,7 +231,7 @@ export default function CreateTripPage() {
 
             {/* Destination */}
             <div className="mb-4">
-              <label htmlFor="destination" className="block text-sm font-medium text-slate-800 mb-1.5">
+              <label htmlFor="destination" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1.5">
                 Destination <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -228,15 +246,15 @@ export default function CreateTripPage() {
                   onChange={handleChange}
                   disabled={isSubmitting || !!successInfo}
                   placeholder="e.g., Goa, India"
-                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 bg-white dark:bg-slate-900 focus:outline-none transition ${
                     fieldErrors.destination
-                      ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
-                      : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                      ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-950/40 bg-red-50/20 dark:bg-red-950/20'
+                      : 'border-slate-300 dark:border-slate-600 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50'
                   }`}
                 />
               </div>
               {fieldErrors.destination && (
-                <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" />
                   <span>{fieldErrors.destination}</span>
                 </p>
@@ -246,7 +264,7 @@ export default function CreateTripPage() {
             {/* Dates Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4">
               <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-slate-800 mb-1.5">
+                <label htmlFor="startDate" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1.5">
                   Start Date <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -260,15 +278,15 @@ export default function CreateTripPage() {
                     value={formData.startDate}
                     onChange={handleChange}
                     disabled={isSubmitting || !!successInfo}
-                    className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                    className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 bg-white dark:bg-slate-900 focus:outline-none transition ${
                       fieldErrors.startDate
-                        ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
-                        : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                        ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-950/40 bg-red-50/20 dark:bg-red-950/20'
+                        : 'border-slate-300 dark:border-slate-600 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50'
                     }`}
                   />
                 </div>
                 {fieldErrors.startDate && (
-                  <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>{fieldErrors.startDate}</span>
                   </p>
@@ -276,7 +294,7 @@ export default function CreateTripPage() {
               </div>
 
               <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-slate-800 mb-1.5">
+                <label htmlFor="endDate" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1.5">
                   End Date <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
@@ -291,15 +309,15 @@ export default function CreateTripPage() {
                     min={formData.startDate || undefined}
                     onChange={handleChange}
                     disabled={isSubmitting || !!successInfo}
-                    className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none transition ${
+                    className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 bg-white dark:bg-slate-900 focus:outline-none transition ${
                       fieldErrors.endDate
-                        ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-red-50/20'
-                        : 'border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-100'
+                        ? 'border-red-300 dark:border-red-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-950/40 bg-red-50/20 dark:bg-red-950/20'
+                        : 'border-slate-300 dark:border-slate-600 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50'
                     }`}
                   />
                 </div>
                 {fieldErrors.endDate && (
-                  <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>{fieldErrors.endDate}</span>
                   </p>
@@ -309,14 +327,14 @@ export default function CreateTripPage() {
           </div>
 
           {/* Section: Organizer Details (Module 2 - Heer Shah) */}
-          <div className="pt-2 border-t border-slate-100">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-4">
               Organizer Details (Module 2)
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-4">
               <div>
-                <label htmlFor="organizerName" className="block text-sm font-medium text-slate-800 mb-1.5">
+                <label htmlFor="organizerName" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1.5">
                   Your Name (Organizer) <span className="text-xs text-slate-400 font-normal">(optional)</span>
                 </label>
                 <div className="relative">
@@ -331,13 +349,13 @@ export default function CreateTripPage() {
                     onChange={handleChange}
                     disabled={isSubmitting || !!successInfo}
                     placeholder="e.g., Heer Shah"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50 focus:outline-none transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="organizerEmail" className="block text-sm font-medium text-slate-800 mb-1.5">
+                <label htmlFor="organizerEmail" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1.5">
                   Organizer Email <span className="text-xs text-slate-400 font-normal">(optional)</span>
                 </label>
                 <div className="relative">
@@ -352,7 +370,7 @@ export default function CreateTripPage() {
                     onChange={handleChange}
                     disabled={isSubmitting || !!successInfo}
                     placeholder="e.g., heer@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50 focus:outline-none transition"
                   />
                 </div>
               </div>
@@ -360,8 +378,8 @@ export default function CreateTripPage() {
           </div>
 
           {/* Description */}
-          <div className="pt-2 border-t border-slate-100">
-            <label htmlFor="description" className="block text-sm font-medium text-slate-800 mb-1.5">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+            <label htmlFor="description" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-1.5">
               Description <span className="text-xs text-slate-400 font-normal">(optional)</span>
             </label>
             <div className="relative">
@@ -376,7 +394,7 @@ export default function CreateTripPage() {
                 onChange={handleChange}
                 disabled={isSubmitting || !!successInfo}
                 placeholder="Add notes, travel goals, or details about this trip..."
-                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100 focus:outline-none transition"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-950/50 focus:outline-none transition"
               />
             </div>
           </div>
@@ -385,7 +403,7 @@ export default function CreateTripPage() {
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">
             <Link
               to="/"
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition text-center"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition text-center"
             >
               Cancel
             </Link>

@@ -109,6 +109,29 @@ npm run dev
 - **Backend**: [http://localhost:5000](http://localhost:5000)
 - **Health Check**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
 
+### 4. Optional Demo Seed Data (Development & Demonstration)
+Populate realistic sample trips with preconfigured participants and chronologically sorted day-by-day itineraries:
+```powershell
+# Populate sample trips (idempotent; will not duplicate if already seeded)
+npm --prefix server run seed:demo
+# or from root:
+npm run seed:demo
+```
+
+Sample trips included:
+1. **Rajasthan Heritage Escape** (Jaipur) — 3 activities (Hawa Mahal, Amber Fort, Nahargarh Fort sunset).
+2. **Goa Beach Getaway** (Goa) — 3 activities (Anjuna Beach, Grand Island Scuba, Fontainhas Walk).
+3. **Mountain Escape** (Manali) — 3 activities (Hadimba Temple, Solang Valley, Jogini Waterfall hike).
+
+Safe demo cleanup command (removes only demo records; keeps all user trips intact):
+```powershell
+npm --prefix server run seed:demo:clear
+# or from root:
+npm run seed:demo:clear
+```
+
+> **Note on Data Isolation**: Because TripMate currently operates without user authentication or per-user account isolation, all seeded demo records are stored within the shared connected MongoDB database instance and are intended strictly for local development, testing, and university demonstration. A production environment guard prevents these scripts from executing when `NODE_ENV === 'production'`. Demo records are clearly badged with a subtle **"Demo"** pill in the UI.
+
 ---
 
 ## 🧪 Testing

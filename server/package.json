@@ -12,7 +12,9 @@
     "test:participant": "node test-participants-invitations.js",
     "test:participant-persistence": "node test-participant-persistence.js",
     "test:trip-edit": "node test-trip-editing.js",
-    "test:itinerary": "node test-itinerary-persistence.js"
+    "test:itinerary": "node test-itinerary-persistence.js",
+    "seed:demo": "node seed-demo.js",
+    "seed:demo:clear": "node seed-demo.js --clear"
   },
   "dependencies": {
     "cors": "^2.8.5",

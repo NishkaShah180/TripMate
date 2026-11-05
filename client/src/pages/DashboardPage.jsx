@@ -113,7 +113,7 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Backend Health Badge */}
-      <div className="mb-6 p-4 rounded-xl border bg-white shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="mb-6 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-colors duration-200">
         <div className="flex items-center gap-3">
           {backendStatus.loading ? (
             <RefreshCw className="w-5 h-5 text-brand-600 animate-spin" />
@@ -123,14 +123,14 @@ export default function DashboardPage() {
             <AlertCircle className="w-5 h-5 text-amber-500" />
           )}
           <div>
-            <p className="text-sm font-medium text-slate-900">
+            <p className="text-sm font-medium text-slate-900 dark:text-white">
               Backend Status:{' '}
-              <span className={backendStatus.connected ? 'text-emerald-600 font-semibold' : 'text-slate-600'}>
+              <span className={backendStatus.connected ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-600 dark:text-slate-400'}>
                 {backendStatus.loading ? 'Checking...' : backendStatus.connected ? 'Connected (MERN Active)' : 'Offline / Error'}
               </span>
             </p>
             {backendStatus.message && (
-              <p className="text-xs text-slate-500">{backendStatus.message}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{backendStatus.message}</p>
             )}
           </div>
         </div>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
             checkBackendHealth();
             loadTrips();
           }}
-          className="text-xs font-medium text-slate-600 hover:text-brand-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-md transition"
+          className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-brand-700 dark:hover:text-brand-400 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-md transition"
         >
           Retest Connection & Refresh
         </button>
@@ -148,15 +148,15 @@ export default function DashboardPage() {
       {/* Header & Quick Action Buttons */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">My Trips</h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">My Trips</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
             Organize trips, manage participants, and share invitations in one place.
           </p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             onClick={() => setShowJoinModal(true)}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 transition shadow-sm text-sm"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm text-sm"
           >
             <KeyRound className="w-4 h-4 text-brand-600" />
             <span>Join with Code</span>
@@ -173,12 +173,12 @@ export default function DashboardPage() {
 
       {/* Trips Content */}
       {isLoadingTrips ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center shadow-sm">
           <Loader2 className="w-8 h-8 text-brand-600 animate-spin mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-700">Loading your trips...</p>
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Loading your trips...</p>
         </div>
       ) : tripsError ? (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center text-red-800">
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-2xl p-6 text-center text-red-800 dark:text-red-300">
           <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-2" />
           <p className="font-semibold text-sm">{tripsError}</p>
           <button
@@ -190,12 +190,12 @@ export default function DashboardPage() {
         </div>
       ) : trips.length === 0 ? (
         /* Empty State */
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-brand-50 dark:bg-brand-950/70 text-brand-600 dark:text-brand-400 flex items-center justify-center">
             <Compass className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">No trips planned yet</h2>
-          <p className="text-sm text-slate-600 mb-6 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No trips planned yet</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
             Start planning your next adventure. Create your trip, invite friends with a code, and manage travelers together.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-3">
@@ -208,7 +208,7 @@ export default function DashboardPage() {
             </Link>
             <button
               onClick={() => setShowJoinModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition text-sm"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition text-sm"
             >
               <KeyRound className="w-4 h-4 text-brand-600" />
               <span>Join with Invite Code</span>
@@ -224,34 +224,41 @@ export default function DashboardPage() {
             return (
               <div
                 key={trip._id}
-                className="bg-white rounded-2xl border border-slate-200 hover:border-brand-300 hover:shadow-md transition duration-200 flex flex-col justify-between overflow-hidden group"
+                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-brand-500 hover:shadow-md transition duration-200 flex flex-col justify-between overflow-hidden group"
               >
                 {/* Card Top */}
                 <div className="p-6">
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-100">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 border border-brand-100 dark:border-brand-800">
                       <MapPin className="w-3.5 h-3.5 text-brand-500" />
                       <span className="truncate max-w-[150px]">{trip.destination}</span>
                     </span>
-                    <span className="font-mono text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                      {trip.inviteCode || 'N/A'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {trip.isDemo && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          Demo
+                        </span>
+                      )}
+                      <span className="font-mono text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">
+                        {trip.inviteCode || 'N/A'}
+                      </span>
+                    </div>
                   </div>
 
                   <Link to={`/trips/${trip._id}`} className="block">
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-brand-600 transition line-clamp-1 mb-1">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition line-clamp-1 mb-1">
                       {trip.name}
                     </h3>
                   </Link>
 
                   {trip.description && (
-                    <p className="text-xs text-slate-500 line-clamp-2 mb-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">
                       {trip.description}
                     </p>
                   )}
 
                   {/* Dates & Duration */}
-                  <div className="flex items-center gap-2 text-xs text-slate-600 mb-4 bg-slate-50 p-2.5 rounded-xl">
+                  <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mb-4 bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-xl">
                     <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
                     <span className="truncate">
                       {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
@@ -260,22 +267,22 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Participants Pill */}
-                  <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                     <Users className="w-4 h-4 text-indigo-500" />
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
                       {trip.participantCount} {trip.participantCount === 1 ? 'member' : 'members'}
                     </span>
                   </div>
                 </div>
 
                 {/* Card Footer / Action */}
-                <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">
-                    Invite Code: <strong className="text-slate-800 font-mono">{trip.inviteCode}</strong>
+                <div className="p-4 bg-slate-50/70 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Invite Code: <strong className="text-slate-800 dark:text-slate-200 font-mono">{trip.inviteCode}</strong>
                   </span>
                   <Link
                     to={`/trips/${trip._id}`}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 transition"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 transition"
                   >
                     <span>Manage Participants</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -289,28 +296,28 @@ export default function DashboardPage() {
 
       {/* Join Trip Modal */}
       {showJoinModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6 shadow-xl relative transition-colors duration-200">
             <button
               onClick={() => {
                 setShowJoinModal(false);
                 setJoinError('');
               }}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/70 text-brand-600 dark:text-brand-400 flex items-center justify-center mb-3">
               <KeyRound className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">Join a Trip</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Join a Trip</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">
               Enter the 6-character trip invite code shared by the trip organizer.
             </p>
 
             {joinError && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-800 text-xs flex items-center gap-2 border border-red-200">
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 text-xs flex items-center gap-2 border border-red-200 dark:border-red-900/60">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
                 <span>{joinError}</span>
               </div>
@@ -318,7 +325,7 @@ export default function DashboardPage() {
 
             <form onSubmit={handleJoinTrip} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Invite Code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -326,13 +333,13 @@ export default function DashboardPage() {
                   placeholder="e.g. TRIP-7X9K2L"
                   value={joinForm.inviteCode}
                   onChange={(e) => setJoinForm({ ...joinForm, inviteCode: e.target.value.toUpperCase() })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono uppercase focus:ring-2 focus:ring-brand-100 focus:border-brand-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm font-mono uppercase focus:ring-2 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Your Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -340,13 +347,13 @@ export default function DashboardPage() {
                   placeholder="e.g. Heer Shah"
                   value={joinForm.name}
                   onChange={(e) => setJoinForm({ ...joinForm, name: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-100 focus:border-brand-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:ring-2 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Your Email <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
@@ -354,7 +361,7 @@ export default function DashboardPage() {
                   placeholder="e.g. heer@example.com"
                   value={joinForm.email}
                   onChange={(e) => setJoinForm({ ...joinForm, email: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-brand-100 focus:border-brand-600 focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:ring-2 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500 focus:outline-none"
                 />
               </div>
 
@@ -362,7 +369,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setShowJoinModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
                 >
                   Cancel
                 </button>

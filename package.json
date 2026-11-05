@@ -10,7 +10,9 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
-    "build:client": "npm --prefix client run build"
+    "build:client": "npm --prefix client run build",
+    "seed:demo": "npm --prefix server run seed:demo",
+    "seed:demo:clear": "npm --prefix server run seed:demo:clear"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

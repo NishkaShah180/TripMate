@@ -30,7 +30,7 @@ export const DESTINATIONS = [
     region: 'Rajasthan, India',
     category: 'Cities',
     description: 'The historic Pink City renowned for majestic Amber Fort, royal palaces, ornate architecture, and lively traditional bazaars.',
-    image: 'https://images.unsplash.com/photo-1603262110263-fb010d6e75dc?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1772533254933-ee692487aba2?auto=format&fit=crop&w=800&q=80',
     tags: ['Heritage', 'Forts & Palaces', 'Culture'],
   },
   {
@@ -57,7 +57,7 @@ export const DESTINATIONS = [
     region: 'Andaman & Nicobar Islands, India',
     category: 'Beaches',
     description: 'Idyllic tropical island famous for Radhanagar Beach, turquoise waters, vibrant coral reefs, and calm mangrove forests.',
-    image: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1650451985907-d922213a17c3?auto=format&fit=crop&w=800&q=80',
     tags: ['Coral Reefs', 'Turquoise Waters', 'Radhanagar'],
   },
   {
