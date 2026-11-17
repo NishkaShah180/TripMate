@@ -1152,3 +1152,351 @@ export const deleteActivity = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * ============================================================================
+ * Expense Management Controllers (Module 2 - Part 3 - Heer Shah)
+ * ============================================================================
+ */
+
+/**
+ * @desc    Get all expenses for a trip
+ * @route   GET /api/trips/:id/expenses
+ * @access  Public
+ */
+export const getTripExpenses = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const expenses = (trip.expenses || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+    const totalAmount = expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+
+    return res.status(200).json({
+      success: true,
+      count: expenses.length,
+      totalAmount,
+      expenses,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Add an expense to a trip with MongoDB persistence
+ * @route   POST /api/trips/:id/expenses
+ * @access  Public
+ */
+export const addExpense = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    const { title, amount, category, date, paidBy, paidByName, notes } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Expense title is required',
+      });
+    }
+
+    const parsedAmount = Number(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Expense amount must be a positive number greater than zero',
+      });
+    }
+
+    const validCategories = ['Food', 'Transport', 'Accommodation', 'Activities', 'Shopping', 'Other'];
+    let expenseCategory = 'Other';
+    if (category && typeof category === 'string') {
+      const match = validCategories.find((c) => c.toLowerCase() === category.trim().toLowerCase());
+      if (match) {
+        expenseCategory = match;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Category must be one of: ${validCategories.join(', ')}`,
+        });
+      }
+    }
+
+    let expenseDate = new Date();
+    if (date) {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid expense date format',
+        });
+      }
+      expenseDate = d;
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    // Resolve payer
+    let resolvedPaidBy = null;
+    let resolvedPaidByName = '';
+
+    if (paidBy && mongoose.Types.ObjectId.isValid(paidBy)) {
+      const matchedParticipant = trip.participants.id(paidBy);
+      if (matchedParticipant) {
+        resolvedPaidBy = matchedParticipant._id;
+        resolvedPaidByName = matchedParticipant.name;
+      }
+    }
+
+    if (!resolvedPaidByName && paidByName && typeof paidByName === 'string' && paidByName.trim()) {
+      resolvedPaidByName = paidByName.trim();
+    } else if (!resolvedPaidByName && !resolvedPaidBy) {
+      const defaultPayer = trip.participants.find((p) => p.role === 'organizer') || trip.participants[0];
+      if (defaultPayer) {
+        resolvedPaidBy = defaultPayer._id;
+        resolvedPaidByName = defaultPayer.name;
+      } else {
+        resolvedPaidByName = 'Trip Member';
+      }
+    }
+
+    const newExpense = {
+      title: title.trim(),
+      amount: Math.round(parsedAmount * 100) / 100,
+      category: expenseCategory,
+      date: expenseDate,
+      paidBy: resolvedPaidBy,
+      paidByName: resolvedPaidByName,
+      notes: notes ? notes.trim() : '',
+    };
+
+    trip.expenses.push(newExpense);
+    await trip.save();
+
+    const savedExpense = trip.expenses[trip.expenses.length - 1];
+
+    return res.status(201).json({
+      success: true,
+      message: 'Expense added successfully',
+      expense: savedExpense,
+      trip,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+      });
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update an existing expense
+ * @route   PUT /api/trips/:id/expenses/:expenseId
+ * @access  Public
+ */
+export const updateExpense = async (req, res, next) => {
+  try {
+    const { id, expenseId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(expenseId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid expense ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const expense = trip.expenses.id(expenseId);
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found in this trip',
+      });
+    }
+
+    const { title, amount, category, date, paidBy, paidByName, notes } = req.body;
+
+    if (title !== undefined) {
+      if (!title || !title.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Expense title cannot be empty',
+        });
+      }
+      expense.title = title.trim();
+    }
+
+    if (amount !== undefined) {
+      const parsedAmount = Number(amount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Expense amount must be a positive number greater than zero',
+        });
+      }
+      expense.amount = Math.round(parsedAmount * 100) / 100;
+    }
+
+    if (category !== undefined) {
+      const validCategories = ['Food', 'Transport', 'Accommodation', 'Activities', 'Shopping', 'Other'];
+      const match = validCategories.find((c) => c.toLowerCase() === String(category).trim().toLowerCase());
+      if (match) {
+        expense.category = match;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Category must be one of: ${validCategories.join(', ')}`,
+        });
+      }
+    }
+
+    if (date !== undefined) {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid expense date format',
+        });
+      }
+      expense.date = d;
+    }
+
+    if (paidBy !== undefined || paidByName !== undefined) {
+      if (paidBy && mongoose.Types.ObjectId.isValid(paidBy)) {
+        const matchedParticipant = trip.participants.id(paidBy);
+        if (matchedParticipant) {
+          expense.paidBy = matchedParticipant._id;
+          expense.paidByName = matchedParticipant.name;
+        } else {
+          expense.paidBy = null;
+          if (paidByName) expense.paidByName = paidByName.trim();
+        }
+      } else if (paidByName && typeof paidByName === 'string' && paidByName.trim()) {
+        expense.paidBy = null;
+        expense.paidByName = paidByName.trim();
+      }
+    }
+
+    if (notes !== undefined) {
+      expense.notes = notes ? String(notes).trim() : '';
+    }
+
+    await trip.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Expense updated successfully',
+      expense,
+      trip,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', '),
+      });
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Delete an expense from a trip
+ * @route   DELETE /api/trips/:id/expenses/:expenseId
+ * @access  Public
+ */
+export const deleteExpense = async (req, res, next) => {
+  try {
+    const { id, expenseId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid trip ID format',
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(expenseId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid expense ID format',
+      });
+    }
+
+    const trip = await Trip.findById(id);
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      });
+    }
+
+    const expense = trip.expenses.id(expenseId);
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found in this trip',
+      });
+    }
+
+    const deletedTitle = expense.title;
+    trip.expenses.pull(expenseId);
+    await trip.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Expense "${deletedTitle}" deleted successfully`,
+      deletedExpenseId: expenseId,
+      trip,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

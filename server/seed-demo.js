@@ -59,6 +59,32 @@ const DEMO_TRIPS_CONFIG = [
         notes: 'Take in panoramic dusk views over the illuminated city of Jaipur.',
       },
     ],
+    expenses: [
+      {
+        title: 'Amber Fort Entry & Audio Guides',
+        amount: 1100,
+        category: 'Activities',
+        dayOffset: 8,
+        paidByName: 'Aarav Sharma',
+        notes: 'Composite entry tickets for both participants',
+      },
+      {
+        title: 'Traditional Rajasthani Thali Lunch',
+        amount: 1850,
+        category: 'Food',
+        dayOffset: 7,
+        paidByName: 'Priya Patel',
+        notes: 'Lunch at LMB restaurant in Old City',
+      },
+      {
+        title: 'Cab to Nahargarh Fort Sunset Point',
+        amount: 650,
+        category: 'Transport',
+        dayOffset: 9,
+        paidByName: 'Aarav Sharma',
+        notes: 'Return cab fare with scenic sunset wait',
+      },
+    ],
   },
   {
     name: 'Goa Beach Getaway',
@@ -97,6 +123,32 @@ const DEMO_TRIPS_CONFIG = [
         notes: 'Explore colourful Portuguese architecture and taste traditional bebinca at a heritage bakery.',
       },
     ],
+    expenses: [
+      {
+        title: 'Grand Island Scuba Diving Passes',
+        amount: 4500,
+        category: 'Activities',
+        dayOffset: 15,
+        paidByName: 'Pooja Mehta',
+        notes: 'Certified diving session with underwater video kit',
+      },
+      {
+        title: 'Anjuna Beachside Shack Dinner',
+        amount: 2200,
+        category: 'Food',
+        dayOffset: 14,
+        paidByName: 'Vikram Singhania',
+        notes: 'Seafood platter and fresh coconut beverages',
+      },
+      {
+        title: 'Scooter Rental (4 Days)',
+        amount: 1600,
+        category: 'Transport',
+        dayOffset: 14,
+        paidByName: 'Pooja Mehta',
+        notes: 'Two Activa scooters with helmets and deposit',
+      },
+    ],
   },
   {
     name: 'Mountain Escape',
@@ -133,6 +185,32 @@ const DEMO_TRIPS_CONFIG = [
         startTime: '14:00',
         location: 'Vashisht Village, Manali',
         notes: 'Scenic 2-hour forest trek leading to the cascading mountain waterfall.',
+      },
+    ],
+    expenses: [
+      {
+        title: 'Riverside Log Cottage Booking',
+        amount: 6800,
+        category: 'Accommodation',
+        dayOffset: 21,
+        paidByName: 'Rohan Verma',
+        notes: 'Advance booking for 2 nights with breakfast',
+      },
+      {
+        title: 'Solang Valley Tandem Paragliding',
+        amount: 3200,
+        category: 'Activities',
+        dayOffset: 22,
+        paidByName: 'Ananya Iyer',
+        notes: 'High-altitude flight with safety gear',
+      },
+      {
+        title: 'Cafe 1947 Woodfired Pizza & Pasta',
+        amount: 1450,
+        category: 'Food',
+        dayOffset: 21,
+        paidByName: 'Rohan Verma',
+        notes: 'Lakeside riverside cafe dinner with hot cocoa',
       },
     ],
   },
@@ -192,6 +270,15 @@ async function run() {
         notes: act.notes,
       }));
 
+      const expenses = (conf.expenses || []).map((exp) => ({
+        title: exp.title,
+        amount: exp.amount,
+        category: exp.category,
+        date: addDaysFromToday(exp.dayOffset),
+        paidByName: exp.paidByName,
+        notes: exp.notes || '',
+      }));
+
       const newTrip = new Trip({
         name: conf.name,
         destination: conf.destination,
@@ -201,11 +288,12 @@ async function run() {
         isDemo: true,
         participants,
         itinerary,
+        expenses,
       });
 
       // Save using standard Mongoose model to trigger validations and pre-save hooks
       await newTrip.save();
-      console.log(`[CREATED] Demo trip "${newTrip.name}" | Code: ${newTrip.inviteCode} | Activities: ${newTrip.itinerary.length}`);
+      console.log(`[CREATED] Demo trip "${newTrip.name}" | Code: ${newTrip.inviteCode} | Activities: ${newTrip.itinerary.length} | Expenses: ${newTrip.expenses.length}`);
       createdCount++;
     }
 

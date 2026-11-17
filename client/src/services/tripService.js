@@ -198,3 +198,60 @@ export async function deleteActivity(tripId, activityId) {
   });
   return handleResponse(response);
 }
+
+/**
+ * ============================================================================
+ * Expense Management Services (Module 2 - Part 3 - Heer Shah)
+ * ============================================================================
+ */
+
+/**
+ * Fetch all expenses for a trip
+ * @param {string} tripId
+ */
+export async function getTripExpenses(tripId) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/expenses`);
+  return handleResponse(response);
+}
+
+/**
+ * Add a new expense to a trip
+ * @param {string} tripId
+ * @param {Object} expenseData - { title, amount, category, date, paidBy, paidByName, notes }
+ */
+export async function addExpense(tripId, expenseData) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/expenses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(expenseData),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Update an existing expense in a trip
+ * @param {string} tripId
+ * @param {string} expenseId
+ * @param {Object} expenseData - { title, amount, category, date, paidBy, paidByName, notes }
+ */
+export async function updateExpense(tripId, expenseId, expenseData) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/expenses/${expenseId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(expenseData),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Delete an expense from a trip
+ * @param {string} tripId
+ * @param {string} expenseId
+ */
+export async function deleteExpense(tripId, expenseId) {
+  const response = await fetch(`${API_BASE_URL}/${tripId}/expenses/${expenseId}`, {
+    method: 'DELETE',
+  });
+  return handleResponse(response);
+}
+

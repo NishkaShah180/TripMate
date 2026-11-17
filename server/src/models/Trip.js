@@ -59,6 +59,48 @@ const activitySchema = new mongoose.Schema({
   },
 });
 
+const expenseSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: [true, 'Expense title is required'],
+    trim: true,
+  },
+  amount: {
+    type: Number,
+    required: [true, 'Expense amount is required'],
+    min: [0.01, 'Expense amount must be greater than zero'],
+  },
+  category: {
+    type: String,
+    enum: ['Food', 'Transport', 'Accommodation', 'Activities', 'Shopping', 'Other'],
+    default: 'Other',
+    trim: true,
+  },
+  date: {
+    type: Date,
+    required: [true, 'Expense date is required'],
+    default: Date.now,
+  },
+  paidBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
+  paidByName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  notes: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 const tripSchema = new mongoose.Schema(
   {
     name: {
@@ -104,6 +146,7 @@ const tripSchema = new mongoose.Schema(
     },
     participants: [participantSchema],
     itinerary: [activitySchema],
+    expenses: [expenseSchema],
   },
   {
     timestamps: true,

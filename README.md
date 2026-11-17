@@ -25,6 +25,14 @@ A clean, responsive, beginner-friendly MERN-stack web application designed for u
     - Update/Toggle Participant Roles (Organizer <-> Member) with database persistence
     - Query Participants directly (`GET /api/trips/:id/participants`) with role breakdowns
     - Automated Testing for Participant Persistence (`npm --prefix server run test:participant-persistence`)
+  - **Part 3: Expense Creation, Editing, and Deletion** ✅
+    - Expense Subdocument Schema with MongoDB Persistence (`trip.expenses`)
+    - Create Expenses with Category Badges (`Food`, `Transport`, `Accommodation`, `Activities`, `Shopping`, `Other`)
+    - Associate Expenses with Trip Participants (`paidBy` / `paidByName`)
+    - Edit Expense metadata, category, amount, date, and notes with real-time database updates
+    - Delete Expenses with subdocument pull (`trip.expenses.pull`) and database synchronization
+    - Real-time Expense Search and Category Filter controls in Trip Details
+    - Automated Testing for Expense Operations (`npm --prefix server run test:expense`)
 
 ---
 
@@ -66,6 +74,7 @@ TripMate/
 │   ├── test-trip-editing.js     # Trip editing API verification test (Module 1 - Part 2)
 │   ├── test-participants-invitations.js # Participant & Invitation verification test (Module 2 - Part 1)
 │   ├── test-participant-persistence.js  # Add & Remove Participant Persistence verification test (Module 2 - Part 2)
+│   ├── test-expense-management.js       # Expense CRUD & Persistence verification test (Module 2 - Part 3)
 │   ├── .env.example             # Configuration template
 │   └── package.json
 ├── .gitignore
@@ -155,6 +164,9 @@ npm --prefix server run test:participant-persistence
 
 # 6. Test Day-Wise Itinerary Management & Persistence (Module 1 - Part 3 - Nishka Shah)
 npm --prefix server run test:itinerary
+
+# 7. Test Expense Creation, Editing & Deletion (Module 2 - Part 3 - Heer Shah)
+npm --prefix server run test:expense
 ```
 
 Build frontend for production:
@@ -197,3 +209,11 @@ npm run build:client
 | `PUT` | `/api/trips/:id/participants/:participantId` | Update participant role (Organizer/Member) with persistence | Active |
 | `DELETE` | `/api/trips/:id/participants/:participantId` | Remove participant from MongoDB subdocuments with integrity checks | Active |
 | `POST` | `/api/trips/:id/invite` | Generate invitation code and record invited participant | Active |
+
+### 💰 Expense Creation, Editing & Deletion (Module 2 — Heer Shah)
+| Method | Endpoint | Description | Status |
+|---|---|---|---|
+| `GET` | `/api/trips/:id/expenses` | Retrieve all expenses for a trip with total calculation | Active |
+| `POST` | `/api/trips/:id/expenses` | Create a new trip expense with category and payer reference | Active |
+| `PUT` | `/api/trips/:id/expenses/:expenseId` | Update an existing expense details, amount, or notes | Active |
+| `DELETE` | `/api/trips/:id/expenses/:expenseId` | Delete an expense with MongoDB subdocument persistence | Active |

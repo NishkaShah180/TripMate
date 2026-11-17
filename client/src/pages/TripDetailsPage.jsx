@@ -11,6 +11,10 @@ import {
   addActivity,
   updateActivity,
   deleteActivity,
+  getTripExpenses,
+  addExpense,
+  updateExpense,
+  deleteExpense,
 } from '../services/tripService';
 import {
   ArrowLeft,
@@ -36,6 +40,12 @@ import {
   UserCheck,
   Clock,
   CalendarDays,
+  Receipt,
+  Utensils,
+  Car,
+  Hotel,
+  Ticket,
+  ShoppingBag,
 } from 'lucide-react';
 
 export default function TripDetailsPage() {
@@ -87,6 +97,25 @@ export default function TripDetailsPage() {
   const [activityError, setActivityError] = useState('');
   const [activitySubmitting, setActivitySubmitting] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState(null);
+
+  // Expenses state (Module 2 - Part 3 - Heer Shah)
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [expenseForm, setExpenseForm] = useState({
+    title: '',
+    amount: '',
+    category: 'Food',
+    date: '',
+    paidBy: '',
+    paidByName: '',
+    notes: '',
+  });
+  const [expenseFieldErrors, setExpenseFieldErrors] = useState({});
+  const [expenseError, setExpenseError] = useState('');
+  const [expenseSubmitting, setExpenseSubmitting] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
+  const [expenseSearch, setExpenseSearch] = useState('');
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('all');
 
   // Form state
   const [participantForm, setParticipantForm] = useState({
@@ -399,6 +428,191 @@ export default function TripDetailsPage() {
       setOperationError(err.message || 'Failed to delete activity');
     } finally {
       setActivitySubmitting(false);
+    }
+  };
+
+  // ============================================================================
+  // Expense helpers and handlers (Module 2 - Part 3 - Heer Shah)
+  // ============================================================================
+  const EXPENSE_CATEGORIES = [
+    { label: 'Food' },
+    { label: 'Transport' },
+    { label: 'Accommodation' },
+    { label: 'Activities' },
+    { label: 'Shopping' },
+    { label: 'Other' },
+  ];
+
+  const getCategoryBadgeClass = (category) => {
+    switch (category) {
+      case 'Food':
+        return 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+      case 'Transport':
+        return 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+      case 'Accommodation':
+        return 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+      case 'Activities':
+        return 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+      case 'Shopping':
+        return 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+      default:
+        return 'bg-slate-100 dark:bg-slate-700/70 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600';
+    }
+  };
+
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'Food':
+        return <Utensils className="w-3.5 h-3.5" />;
+      case 'Transport':
+        return <Car className="w-3.5 h-3.5" />;
+      case 'Accommodation':
+        return <Hotel className="w-3.5 h-3.5" />;
+      case 'Activities':
+        return <Ticket className="w-3.5 h-3.5" />;
+      case 'Shopping':
+        return <ShoppingBag className="w-3.5 h-3.5" />;
+      default:
+        return <Receipt className="w-3.5 h-3.5" />;
+    }
+  };
+
+  const expenses = trip?.expenses || [];
+
+  const totalExpensesAmount = useMemo(() => {
+    return expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  }, [expenses]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((exp) => {
+      const matchesCategory =
+        expenseCategoryFilter === 'all' ||
+        exp.category?.toLowerCase() === expenseCategoryFilter.toLowerCase();
+      const matchesSearch =
+        !expenseSearch.trim() ||
+        exp.title?.toLowerCase().includes(expenseSearch.toLowerCase()) ||
+        exp.paidByName?.toLowerCase().includes(expenseSearch.toLowerCase()) ||
+        (exp.notes && exp.notes.toLowerCase().includes(expenseSearch.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    }).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }, [expenses, expenseCategoryFilter, expenseSearch]);
+
+  const handleOpenAddExpenseModal = () => {
+    setEditingExpense(null);
+    const defaultPayer = trip?.participants?.find((p) => p.role === 'organizer') || trip?.participants?.[0];
+    setExpenseForm({
+      title: '',
+      amount: '',
+      category: 'Food',
+      date: toDateInputValue(new Date()),
+      paidBy: defaultPayer ? String(defaultPayer._id) : 'custom',
+      paidByName: defaultPayer ? defaultPayer.name : '',
+      notes: '',
+    });
+    setExpenseFieldErrors({});
+    setExpenseError('');
+    setShowExpenseModal(true);
+  };
+
+  const handleOpenEditExpenseModal = (expense) => {
+    setEditingExpense(expense);
+    setExpenseForm({
+      title: expense.title || '',
+      amount: expense.amount !== undefined ? String(expense.amount) : '',
+      category: expense.category || 'Other',
+      date: toDateInputValue(expense.date),
+      paidBy: expense.paidBy ? String(expense.paidBy) : 'custom',
+      paidByName: expense.paidByName || '',
+      notes: expense.notes || '',
+    });
+    setExpenseFieldErrors({});
+    setExpenseError('');
+    setShowExpenseModal(true);
+  };
+
+  const validateExpenseForm = () => {
+    const errors = {};
+    if (!expenseForm.title.trim()) {
+      errors.title = 'Expense title is required';
+    }
+    const parsedAmount = Number(expenseForm.amount);
+    if (!expenseForm.amount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      errors.amount = 'Amount must be a number greater than 0';
+    }
+    if (!expenseForm.date) {
+      errors.date = 'Expense date is required';
+    }
+    if (expenseForm.paidBy === 'custom' && !expenseForm.paidByName.trim()) {
+      errors.paidByName = 'Payer name is required';
+    }
+    setExpenseFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveExpense = async (e) => {
+    e.preventDefault();
+    setExpenseError('');
+
+    if (!validateExpenseForm()) {
+      return;
+    }
+
+    setExpenseSubmitting(true);
+    try {
+      let resolvedPaidBy = null;
+      let resolvedPaidByName = expenseForm.paidByName.trim();
+
+      if (expenseForm.paidBy && expenseForm.paidBy !== 'custom') {
+        const found = trip?.participants?.find((p) => String(p._id) === expenseForm.paidBy);
+        if (found) {
+          resolvedPaidBy = found._id;
+          resolvedPaidByName = found.name;
+        }
+      }
+
+      const payload = {
+        title: expenseForm.title.trim(),
+        amount: Number(expenseForm.amount),
+        category: expenseForm.category,
+        date: expenseForm.date,
+        paidBy: resolvedPaidBy,
+        paidByName: resolvedPaidByName || 'Trip Member',
+        notes: expenseForm.notes.trim(),
+      };
+
+      if (editingExpense) {
+        const res = await updateExpense(tripId, editingExpense._id, payload);
+        setTrip(res.trip);
+        setOperationSuccess(`Expense "${payload.title}" updated successfully.`);
+      } else {
+        const res = await addExpense(tripId, payload);
+        setTrip(res.trip);
+        setOperationSuccess(`Expense "${payload.title}" added successfully.`);
+      }
+
+      setShowExpenseModal(false);
+      setTimeout(() => setOperationSuccess(''), 3000);
+    } catch (err) {
+      setExpenseError(err.message || 'Failed to save expense.');
+    } finally {
+      setExpenseSubmitting(false);
+    }
+  };
+
+  const handleDeleteExpense = async () => {
+    if (!expenseToDelete) return;
+    setOperationError('');
+    setIsSubmitting(true);
+    try {
+      const res = await deleteExpense(tripId, expenseToDelete._id);
+      setTrip(res.trip);
+      setExpenseToDelete(null);
+      setOperationSuccess('Expense deleted successfully.');
+      setTimeout(() => setOperationSuccess(''), 3000);
+    } catch (err) {
+      setOperationError(err.message || 'Failed to delete expense.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -830,6 +1044,199 @@ export default function TripDetailsPage() {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Trip Expenses Section (Module 2 - Part 3 - Heer Shah) */}
+      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 sm:p-8 shadow-sm mb-8 transition-colors duration-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-700">
+          <div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Trip Expenses</h2>
+              <span className="text-xs bg-brand-50 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 px-2.5 py-0.5 rounded-full font-semibold">
+                {expenses.length} {expenses.length === 1 ? 'expense' : 'expenses'}
+              </span>
+              <span className="text-xs bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full font-bold">
+                Total: ₹{totalExpensesAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Create, view, and manage trip expenditures with MongoDB persistence across all travel categories.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOpenAddExpenseModal}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm transition"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Add Expense</span>
+          </button>
+        </div>
+
+        {/* Category Filters and Search Controls */}
+        <div className="py-4 border-b border-slate-100 dark:border-slate-700 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setExpenseCategoryFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition whitespace-nowrap ${
+                expenseCategoryFilter === 'all'
+                  ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
+                  : 'bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              All ({expenses.length})
+            </button>
+            {EXPENSE_CATEGORIES.map((cat) => {
+              const count = expenses.filter((e) => e.category === cat.label).length;
+              const isSelected = expenseCategoryFilter.toLowerCase() === cat.label.toLowerCase();
+              return (
+                <button
+                  key={cat.label}
+                  type="button"
+                  onClick={() => setExpenseCategoryFilter(cat.label)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-brand-600 text-white shadow-sm font-semibold'
+                      : 'bg-slate-50 dark:bg-slate-700/40 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600'
+                  }`}
+                >
+                  {getCategoryIcon(cat.label)}
+                  <span>{cat.label}</span>
+                  {count > 0 && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-brand-700/60 text-white'
+                          : 'bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Box */}
+          <div className="relative min-w-[220px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search expenses..."
+              value={expenseSearch}
+              onChange={(e) => setExpenseSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-500"
+            />
+          </div>
+        </div>
+
+        {/* Expenses List */}
+        <div className="pt-6">
+          {filteredExpenses.length === 0 ? (
+            <div className="p-8 sm:p-12 text-center rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-700">
+              <div className="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-950/70 text-brand-600 dark:text-brand-400 flex items-center justify-center mx-auto mb-3">
+                <Receipt className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                {expenses.length === 0 ? 'No expenses recorded yet' : 'No matching expenses found'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto mb-4">
+                {expenses.length === 0
+                  ? 'Start tracking your trip spending by adding your first expense (food, stay, transport, or activities).'
+                  : 'Try adjusting your search query or category filter.'}
+              </p>
+              {expenses.length === 0 && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddExpenseModal}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-sm transition"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Add First Expense</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredExpenses.map((expense) => {
+                const badgeClass = getCategoryBadgeClass(expense.category);
+                return (
+                  <div
+                    key={expense._id}
+                    className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/90 hover:border-brand-300 dark:hover:border-brand-600 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
+                  >
+                    {/* Left: Category Icon + Title + Meta */}
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0 mt-0.5">
+                        {getCategoryIcon(expense.category)}
+                      </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                            {expense.title}
+                          </h4>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClass}`}>
+                            {getCategoryIcon(expense.category)}
+                            <span>{expense.category || 'Other'}</span>
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>{formatDate(expense.date)}</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <User className="w-3.5 h-3.5" />
+                            <span>Paid by <strong className="text-slate-700 dark:text-slate-300 font-medium">{expense.paidByName || 'Trip Member'}</strong></span>
+                          </span>
+                        </div>
+
+                        {expense.notes && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 whitespace-pre-line leading-relaxed">
+                            {expense.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Amount & Actions */}
+                    <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 border-slate-100 dark:border-slate-700 pt-3 sm:pt-0">
+                      <div className="text-left sm:text-right">
+                        <span className="block text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                          ₹{Number(expense.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditExpenseModal(expense)}
+                          className="p-2 rounded-lg text-slate-400 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                          title="Edit expense"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpenseToDelete(expense)}
+                          className="p-2 rounded-lg text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                          title="Delete expense"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1673,6 +2080,255 @@ export default function TripDetailsPage() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm disabled:opacity-60"
               >
                 {activitySubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add / Edit Expense */}
+      {showExpenseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 max-w-lg w-full p-6 shadow-2xl relative transition-colors duration-200 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowExpenseModal(false)}
+              disabled={expenseSubmitting}
+              className="absolute top-5 right-5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950/70 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {editingExpense ? 'Edit Expense' : 'Add New Expense'}
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
+              {editingExpense
+                ? 'Update expense details, amount, category, or payer information.'
+                : 'Record a new payment or expenditure for this trip.'}
+            </p>
+
+            {expenseError && (
+              <div className="mb-4 p-3 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-900 dark:text-red-200 flex items-center gap-2 text-xs">
+                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                <span>{expenseError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveExpense} className="space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Expense Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Traditional Rajasthani Thali Lunch"
+                  value={expenseForm.title}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, title: e.target.value })}
+                  className={`w-full px-3.5 py-2 text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 ${
+                    expenseFieldErrors.title
+                      ? 'border-red-400 focus:ring-red-100'
+                      : 'border-slate-300 dark:border-slate-600 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500'
+                  }`}
+                  disabled={expenseSubmitting}
+                />
+                {expenseFieldErrors.title && (
+                  <p className="text-[11px] text-red-500 mt-1">{expenseFieldErrors.title}</p>
+                )}
+              </div>
+
+              {/* Amount & Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Amount (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="e.g. 1450.00"
+                    value={expenseForm.amount}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                    className={`w-full px-3.5 py-2 text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 ${
+                      expenseFieldErrors.amount
+                        ? 'border-red-400 focus:ring-red-100'
+                        : 'border-slate-300 dark:border-slate-600 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500'
+                    }`}
+                    disabled={expenseSubmitting}
+                  />
+                  {expenseFieldErrors.amount && (
+                    <p className="text-[11px] text-red-500 mt-1">{expenseFieldErrors.amount}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={expenseForm.category}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500"
+                    disabled={expenseSubmitting}
+                  >
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={cat.label} value={cat.label}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Date & Paid By */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Expense Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={expenseForm.date}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                    className={`w-full px-3.5 py-2 text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                      expenseFieldErrors.date
+                        ? 'border-red-400 focus:ring-red-100'
+                        : 'border-slate-300 dark:border-slate-600 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500'
+                    }`}
+                    disabled={expenseSubmitting}
+                  />
+                  {expenseFieldErrors.date && (
+                    <p className="text-[11px] text-red-500 mt-1">{expenseFieldErrors.date}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Paid By <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={expenseForm.paidBy}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'custom') {
+                        setExpenseForm({ ...expenseForm, paidBy: 'custom', paidByName: '' });
+                      } else {
+                        const matched = trip?.participants?.find((p) => String(p._id) === val);
+                        setExpenseForm({
+                          ...expenseForm,
+                          paidBy: val,
+                          paidByName: matched ? matched.name : '',
+                        });
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500"
+                    disabled={expenseSubmitting}
+                  >
+                    {trip?.participants?.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name} ({p.role})
+                      </option>
+                    ))}
+                    <option value="custom">Other / Custom Name...</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Custom Payer Name if 'custom' selected */}
+              {expenseForm.paidBy === 'custom' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Payer Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter payer's name"
+                    value={expenseForm.paidByName}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, paidByName: e.target.value })}
+                    className={`w-full px-3.5 py-2 text-xs rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 ${
+                      expenseFieldErrors.paidByName
+                        ? 'border-red-400 focus:ring-red-100'
+                        : 'border-slate-300 dark:border-slate-600 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500'
+                    }`}
+                    disabled={expenseSubmitting}
+                  />
+                  {expenseFieldErrors.paidByName && (
+                    <p className="text-[11px] text-red-500 mt-1">{expenseFieldErrors.paidByName}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Notes / Receipt Details <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Paid via UPI, bill attached, includes service tax"
+                  value={expenseForm.notes}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-600 dark:focus:border-brand-500"
+                  disabled={expenseSubmitting}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowExpenseModal(false)}
+                  disabled={expenseSubmitting}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={expenseSubmitting}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition shadow-sm disabled:opacity-60"
+                >
+                  {expenseSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{editingExpense ? 'Save Changes' : 'Record Expense'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Expense Confirmation */}
+      {expenseToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 max-w-sm w-full p-6 shadow-xl relative transition-colors duration-200">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete Expense</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+              Are you sure you want to remove <strong className="text-slate-800 dark:text-slate-200">"{expenseToDelete.title}"</strong> (₹{Number(expenseToDelete.amount).toLocaleString('en-IN')})? This change will be permanently persisted in MongoDB.
+            </p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setExpenseToDelete(null)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleDeleteExpense}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm disabled:opacity-60"
+              >
+                {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Delete</span>
               </button>
             </div>

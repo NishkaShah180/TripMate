@@ -43,7 +43,7 @@ export default function Navbar() {
             <div>
               <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">TripMate</span>
               <span className="hidden sm:inline-block ml-2 text-xs font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-full border border-brand-200 dark:border-brand-800">
-                Module 1 & 2 (Part 1 & 2)
+                Module 1 & 2 (Part 1, 2 & 3)
               </span>
             </div>
           </Link>
