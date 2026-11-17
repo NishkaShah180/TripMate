@@ -14,26 +14,9 @@ A clean, responsive, beginner-friendly MERN-stack web application designed for u
   - Automated Testing for Trip Creation & Editing (`npm --prefix server run test:trip`, `npm --prefix server run test:trip-edit`) ✅
 
 - **Heer Shah — Module 2**
-  - **Part 1: Participant Management & Trip Invitations** ✅
-    - Unique 6-character Trip Invite Codes & 1-Click Copy
-    - Shareable Join Links & Direct Join Flow (`/join/:code`)
-    - Automated Testing for Invitations (`npm --prefix server run test:participant`)
-  - **Part 2: Add & Remove Participants with Persistence in MongoDB** ✅
-    - Participant Directory with Roles (Organizer / Member) & Status (Confirmed / Invited)
-    - Add Participants directly with validation (duplicate detection, email format validation, required fields)
-    - Remove Participants with MongoDB persistence (`trip.participants.pull`) and sole-organizer integrity checks
-    - Update/Toggle Participant Roles (Organizer <-> Member) with database persistence
-    - Query Participants directly (`GET /api/trips/:id/participants`) with role breakdowns
-    - Automated Testing for Participant Persistence (`npm --prefix server run test:participant-persistence`)
-  - **Part 3: Expense Creation, Editing, and Deletion** ✅
-    - Expense Subdocument Schema with MongoDB Persistence (`trip.expenses`)
-    - Create Expenses with Category Badges (`Food`, `Transport`, `Accommodation`, `Activities`, `Shopping`, `Other`)
-    - Associate Expenses with Trip Participants (`paidBy` / `paidByName`)
-    - Edit Expense metadata, category, amount, date, and notes with real-time database updates
-    - Delete Expenses with subdocument pull (`trip.expenses.pull`) and database synchronization
-    - Real-time Expense Search and Category Filter controls in Trip Details
-    - Automated Testing for Expense Operations (`npm --prefix server run test:expense`)
-
+  - Participant Management & Trip Invitations ✅
+  - Add & Remove Participants with Persistence in MongoDB ✅
+  - Expense Creation, Editing, and Deletion ✅
 ---
 
 ## 🛠️ Tech Stack
